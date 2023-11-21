@@ -17,13 +17,23 @@ def create_map_global():
 
 
 def update_map(abs_pos, map_global, obstacles_pos):
+    # Init
+    rounded_x_indices = []
+    rounded_y_indices = []
+    
+    # Rotate
+    theta = abs_pos[0][2]+math.pi/2
+    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
+                           [np.sin(theta), np.cos(theta)]])
+    obstacles_pos =np.dot(obstacles_pos, rotation_matrix)
+  
     # Set all value from absolute position
     for pos in obstacles_pos:
-        if not math.isinf(pos[0] or pos[1]):
-            rounded_x_indices = np.round(abs_pos[-1][0] + pos[0], 1).astype(int)
-            rounded_y_indices = np.round(abs_pos[-1][1] + pos[1], 1).astype(int)
+        if not ((math.isinf(pos[0]) and math.isinf(pos[1])) ):
+            rounded_x_indices.append(np.round(abs_pos[-1][0] + pos[0], 1).astype(int))
+            rounded_y_indices.append(np.round(abs_pos[-1][1] + pos[1], 1).astype(int))
 
-    for x, y in zip(rounded_x_indices, rounded_y_indices):
+    for x, y in zip(rounded_x_indices[1:], rounded_y_indices[1:]):
         map_global[x, y] = 1
                 
     return map_global

@@ -22,7 +22,6 @@ from count_group import count_transitions, count_group
 # %matplotlib inline
 
 
-
 def localNav(abs_pos, goal_position, prox_horizontal, map_global):
     # Get sensors values
     sensor_vals = prox_horizontal
@@ -87,13 +86,11 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
 
     # Look if possible in front
     for i in range(len(mask.flatten())):
-        current_value = mask.flatten()[i]
         if mask[i]==0:
             possible_path.append(i)
             
     # Look if possible in back
     for i in range(len(mask_back.flatten())):
-        current_value = mask_back.flatten()[i]
         if mask_back[i]==0:
             possible_path.append(i+5)
             
@@ -129,7 +126,7 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
     closest_angle = min(possible_path_angles, key=lambda x: abs(x - angle_to_goal))
 
     # Update Map
-
+    map_global = update_map(abs_pos, map_global, obstacles_pos)
 
     return closest_angle, map_global
 
