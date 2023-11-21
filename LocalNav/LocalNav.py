@@ -30,16 +30,15 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
     sensor_vals[5], sensor_vals[6] = sensor_vals[6], sensor_vals[5]
 
     # Compute position of obstacles
-    obstacles_pos = obstacles_pos(sensor_vals, sensor_measurements, sensor_distances, sensor_pos_from_center, sensor_angles)
-
+    obstacles_positions = obstacles_pos(sensor_vals, sensor_measurements, sensor_distances, sensor_pos_from_center, sensor_angles)
 
     # Compute linear regression of lines from front and back
     # Front
-    data = obstacles_pos[0:5]
+    data = obstacles_positions[0:5]
     X, y_pred, mask = linear_regression(data)
 
     # Back
-    data_back = obstacles_pos[5:8]
+    data_back = obstacles_positions[5:8]
     X_back, y_pred_back, mask_back = linear_regression(data_back)
 
 
