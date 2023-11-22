@@ -25,7 +25,7 @@ def count_transitions(mask, X, y_pred):
                     transitions += 1
                 current_state = state
                 
-        if any(mask):
+        if all(mask):
             transitions = 1
     
     return transitions, mask

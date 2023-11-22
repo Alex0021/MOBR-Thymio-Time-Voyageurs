@@ -16,22 +16,22 @@ def create_map_global():
     return map_global
 
 
-def update_map(abs_pos, map_global, obstacles_pos):
+def update_map(abs_pos, map_global, front_obst_X, front_obst_y, back_obst_X, back_obst_y):
     # Init
     rounded_x_indices = []
     rounded_y_indices = []
-    
-    # Rotate
-    theta = abs_pos[0][2]+math.pi/2
-    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
-                           [np.sin(theta), np.cos(theta)]])
-    obstacles_pos =np.dot(obstacles_pos, rotation_matrix)
   
     # Set all value from absolute position
-    for pos in obstacles_pos:
-        if not ((math.isinf(pos[0]) and math.isinf(pos[1])) ):
-            rounded_x_indices.append(np.round(abs_pos[-1][0] + pos[0], 1).astype(int))
-            rounded_y_indices.append(np.round(abs_pos[-1][1] + pos[1], 1).astype(int))
+    for i in range(len(front_obst_X)):
+        if not ((math.isnan(front_obst_y[i]) and math.isnan(front_obst_y[i])) ):
+            rounded_x_indices.append(np.round(abs_pos[-1][0] + front_obst_X[i], 1).astype(int))
+            rounded_y_indices.append(np.round(abs_pos[-1][1] + front_obst_y[i], 1).astype(int))
+            
+    for i in range(len(back_obst_X)):
+        if not ((math.isnan(back_obst_y[i]) and math.isnan(back_obst_y[i])) ):
+            rounded_x_indices.append(np.round(abs_pos[-1][0] + back_obst_X[i], 1).astype(int))
+            rounded_y_indices.append(np.round(abs_pos[-1][1] + back_obst_y[i], 1).astype(int))
+
 
     for x, y in zip(rounded_x_indices[1:], rounded_y_indices[1:]):
         map_global[x, y] = 1

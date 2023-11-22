@@ -18,6 +18,7 @@ from local_occupancy import thymio_coords, sensor_pos_from_center, sensor_angles
 from map_global import create_map_global, update_map
 from linear_regression import linear_regression
 from count_group import count_transitions, count_group
+from normalize_angle import normalize_angle
 
 # %matplotlib inline
 
@@ -38,9 +39,19 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
     X, y_pred, mask = linear_regression(data)
 
     # Back
-    data_back = obstacles_positions[5:8]
+    data_back = obstacles_positions[5:7]
     X_back, y_pred_back, mask_back = linear_regression(data_back)
 
+    # Filter value to create extra wall, constraints, nb of possible exit path
+    nb_grouph, mask, mask_back = count_group(mask, mask_back, X, y_pred, X_back, y_pred_back)
+
+    # Add extra Walls
+    i=0
+    while i < len(data):
+        if mask[i] and np.isnan(y_pred[i]):
+            X[i] = (X[i-1]+X[i+1])/2
+            y_pred[i] = (y_pred[i-1]+y_pred[i+1])/2
+        i = i + 1
 
     # Compute absolute values
     # Rotation matrix
@@ -64,15 +75,10 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
     back_obst_X = back_obst_coords_rotated[:, 0]+abs_pos[0][0]
     back_obst_y = back_obst_coords_rotated[:, 1]+abs_pos[0][1]
 
-    # temporary ?
     # Calculate the angle to reach the goal in a straight line
     delta_x = goal_position[0][0] - abs_pos[0][0]
     delta_y = goal_position[0][1] - abs_pos[0][1]
-    angle_to_goal = math.atan2(delta_y, delta_x)-abs_pos[0][2]
-
-    # Filter value to create extra wall, constraints
-    # Compute number of group
-    nb_grouph, mask, mask_back = count_group(mask, mask_back, X, y_pred, X_back, y_pred_back)
+    angle_to_goal = math.atan2(delta_y, delta_x)
 
     # Number of possible path
     if nb_grouph == 1:
@@ -108,7 +114,7 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
 
     # Convert possible_path to angles
     angle_mapping = {
-        6: 140, -4: 90,-1: 60, 0: 40, 1: 20, 2: 0, 3: -20, 4: -40, -2: -60, -3: -90, 5: -140
+        6: 140, -4: 60,-1: 90, 0: 40, 1: 40, 2: 0, 3: -40, 4: -60, -2: -90, -3: -90, 5: -140
     }
 
     possible_path_angles = []
@@ -120,6 +126,8 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
             angle_in_radians = math.radians(angle_mapping[state])
             possible_path_angles.append(angle_in_radians)
             
+    for angle in possible_path_angles:
+        angle = normalize_angle(angle + theta)
 
     # Choose angle closest to angle_to_goal
     closest_angle = min(possible_path_angles, key=lambda x: abs(x - angle_to_goal))
