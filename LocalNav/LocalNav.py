@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.getcwd(), 'tools'))
 from sensors import obstacles_pos
 from local_occupancy import sensor_measurements, sensor_distances
 from local_occupancy import thymio_coords, sensor_pos_from_center, sensor_angles
-from map_global import create_map_global, update_map
+from map_global import create_map_global, update_map, draw_line
 from linear_regression import linear_regression
 from count_group import count_transitions, count_group
 from normalize_angle import normalize_angle
@@ -133,7 +133,7 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
     closest_angle = min(possible_path_angles, key=lambda x: abs(x - angle_to_goal))
 
     # Update Map
-    map_global = update_map(abs_pos, map_global, obstacles_pos)
+    map_global = update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obst_X, back_obst_y)
 
     return closest_angle, map_global
 
