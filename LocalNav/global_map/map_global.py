@@ -15,6 +15,7 @@ def create_map_global():
     
     return map_global
 
+
 def draw_line(map_array, x0, y0, x1, y1):
     dx = abs(x1 - x0)
     dy = abs(y1 - y0)
@@ -32,6 +33,8 @@ def draw_line(map_array, x0, y0, x1, y1):
             err += dx
             y0 += sy
 
+            
+
 def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obst_X, back_obst_y):
     # Init
     rounded_x_indices = []
@@ -44,7 +47,9 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
             rounded_x_indices.append(int(round(front_obst_X[i], 1)))
             rounded_y_indices.append(int(round(front_obst_y[i], 1)))
             updated_mask.append(mask[i])
-
+            map_global[int(round(front_obst_y[i], 1)), int(round(front_obst_X[i], 1))] = 1
+            
+            
     for i in range(len(rounded_x_indices) - 1):
         x0, y0 = rounded_x_indices[i], rounded_y_indices[i]
         x1, y1 = rounded_x_indices[i + 1], rounded_y_indices[i + 1]
@@ -52,6 +57,7 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
         # If mask is true, draw a line within front_obst_X, front_obst_y
         if updated_mask[i]:
             draw_line(map_global, x0, y0, x1, y1)
+            
             
     # Reset indices for back points
     rounded_x_indices = []
@@ -64,6 +70,7 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
             rounded_x_indices.append(int(round(back_obst_X[i], 1)))
             rounded_y_indices.append(int(round(back_obst_y[i], 1)))
             updated_mask.append(mask_back[i])
+            map_global[int(round(back_obst_y[i], 1)), int(round(back_obst_X[i], 1))] = 1
 
     for i in range(len(rounded_x_indices) - 1):
         x0, y0 = rounded_x_indices[i], rounded_y_indices[i]
@@ -73,3 +80,5 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
             draw_line(map_global, x0, y0, x1, y1)
                 
     return map_global
+    
+ 
