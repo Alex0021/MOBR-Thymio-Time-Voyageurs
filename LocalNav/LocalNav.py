@@ -7,9 +7,9 @@ import numpy as np
 from scipy.interpolate import interp1d
 from sklearn.linear_model import LinearRegression
 
-sys.path.insert(0, os.path.join(os.getcwd(), 'sensors'))
-sys.path.insert(0, os.path.join(os.getcwd(), 'global_map'))
-sys.path.insert(0, os.path.join(os.getcwd(), 'tools'))
+sys.path.insert(0, os.path.join(os.getcwd(), 'LocalNav/sensors'))
+sys.path.insert(0, os.path.join(os.getcwd(), 'LocalNav/global_map'))
+sys.path.insert(0, os.path.join(os.getcwd(), 'LocalNav/tools'))
 
 from sensors import obstacles_pos
 from local_occupancy import sensor_measurements, sensor_distances

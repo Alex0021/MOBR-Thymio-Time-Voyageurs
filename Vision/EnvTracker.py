@@ -82,9 +82,9 @@ class EnvTracker:
         corners, ids, rejected = detector.detectMarkers(img_detect)
         img_detect = cv2.aruco.drawDetectedMarkers(img_detect, corners, ids)
         # Save markers & ids
-        if len(ids) > 0:
+        if ids is not None:
             self._detected_markers = dict(zip(ids[:,0], corners))
-        return len(ids) > 0, img_detect
+        return ids is not None, img_detect
     
     def detectMap(self, frame: cv2.Mat) -> tuple[bool, cv2.Mat]:
         img_detect = cv2.copyTo(frame, None)
