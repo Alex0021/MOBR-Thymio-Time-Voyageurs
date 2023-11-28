@@ -1,6 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
 def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle):
     # Plot
     # Plot Map
@@ -31,30 +28,3 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle):
 
 
     plt.show()
-
-
-def configure_ax(ax, max_x, max_y):
-    """
-    Helper function to create a figure of the desired dimensions & grid
-    
-    :param max_val: dimension of the map along the x and y dimensions
-    :return: the fig and ax objects.
-    """
-    MAJOR = 10
-    MINOR = 1
-    
-    major_ticks_x = np.arange(0, max_x+1, MAJOR)
-    minor_ticks_x = np.arange(0, max_x+1, MINOR)
-    major_ticks_y = np.arange(0, max_y+1, MAJOR)
-    minor_ticks_y = np.arange(0, max_y+1, MINOR)
-    ax.set_xticks(major_ticks_x)
-    ax.set_xticks(minor_ticks_x, minor=True)
-    ax.set_yticks(major_ticks_y)
-    ax.set_yticks(minor_ticks_y, minor=True)
-    ax.grid(which='minor', alpha=0.2)
-    ax.grid(which='major', alpha=0.5)
-    ax.set_ylim([-1,max_y])
-    ax.set_xlim([-1,max_x])
-    ax.grid(True)
-
-    return ax
