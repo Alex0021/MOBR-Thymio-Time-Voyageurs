@@ -318,7 +318,7 @@ class EnvTracker:
         p = np.vstack((tvec_new.reshape((3,1)), [1]))
         return np.linalg.solve(P,p)[0:3].T
     
-    def createMap(self, frame: cv2.Mat, bl_marker=0) -> np.ndarray:
+    def createMap(self, frame: cv2.Mat, bl_marker=0) -> tuple[np.ndarray, np.ndarray]:
         ret, img_map = self.detectMap(frame)
         if self._map_detected:
             # Replace all detected markers with white square
@@ -362,10 +362,20 @@ class EnvTracker:
             soby = cv2.Sobel(img_filtered, cv2.CV_64F, 0, 1, 3)
             sob = np.sqrt(sobx**2 + soby**2)
             sob = (sob * 255 / sob.max()).astype(np.uint8)
-            # Thicken the edges
-            #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9,9))
-            #sob = cv2.dilate(sob, kernel)
-            # Apply threshold for binary transformation
+            # Detect contours
+            #sob = cv2.bitwise_not(sob)
+            #contours, _ = cv2.findContours(sob, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            # Set a minimum and maximum contour area to filter out small and large contours
+            #min_contour_area = 1  # Adjust this based on your requirements
+            #max_contour_area = 5000  # Adjust this based on your requirements
+
+            # Filter out contours based on area
+            #filtered_contours = [cnt for cnt in contours if min_contour_area < cv2.contourArea(cnt) < max_contour_area]
+            # Create an empty image to draw the filtered contours
+            #filtered_image = np.zeros_like(sob)
+            #cv2.drawContours(filtered_image, filtered_contours, -1, 255, thickness=cv2.FILLED)
+
             cv2.threshold(sob, self.THRESHOLD, 255, cv2.THRESH_BINARY, sob)
             #cv2.adaptiveThreshold(sob, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 5, 0)
             axes[1,0].axis('off')
