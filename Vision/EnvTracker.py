@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import math
 import matplotlib.ticker as ticker
+import Vision.CamCalib as CamCalib
+import time
 
 class EnvTracker:
     def __init__(self, map_size: tuple, cam_mtx: cv2.Mat, dist_coefs: cv2.Mat, res=1):
@@ -77,7 +79,7 @@ class EnvTracker:
 
         # Map creation
         self.THRESHOLD = 100
-        self.PROJECTED_RES = (1680, 1050)
+        self.PROJECTED_RES = (1000, 1000)
         self._roi_map = tuple()
         self._roi_points = []
         self._world_to_pixels = []
@@ -91,6 +93,12 @@ class EnvTracker:
         self._goal_detected = False
         self._goal_pose = np.zeros(2)
         self._gridmap = np.zeros((10,10)) # Arbitrary size
+
+        # Thymio tracking data
+        self._thymio_pose_hist = np.zeros((10,3))
+        self._thymio_vel = np.zeros(3)
+        self._last_time = 0
+        self._update_count = 0
 
     def detectMarkers(self, frame: cv2.Mat) -> tuple[bool,cv2.Mat]:
         img_detect = cv2.copyTo(frame, None)
@@ -233,7 +241,7 @@ class EnvTracker:
         # Compute heading vector
         heading = np.mean(corners[(0,1,4,5), :], 0) - np.mean(corners[(2,3,6,7), :], 0)
         heading = heading/np.linalg.norm(heading)
-        arrow_head = thymio_pose + 40*heading
+        arrow_head = thymio_pose + 50*heading
         # Show heading
         cv2.arrowedLine(img_detect, thymio_pose.astype(int), arrow_head.astype(int), self.DETECTED_THYMIO_COLOR, 3)
         # Compute angle
@@ -372,26 +380,93 @@ class EnvTracker:
                     c_x = math.floor(i*grid_w) + grid_w/2
                     c_y = math.floor((len(self._gridmap[0])-1-j)*grid_h) + grid_h/2
                     im_rect = cv2.getRectSubPix(sob, ((int) (round(grid_w, 0)),(int) (round(grid_h,0))), (c_x,c_y))
-                    self._gridmap[i,j] = -1 if cv2.sumElems(im_rect)[0] > cv2.mean(im_rect)[0] else 0
+                    self._gridmap[i,j] = 1 if cv2.sumElems(im_rect)[0] > cv2.mean(im_rect)[0] else 0
             self._configure_ax(axes[1,1], self._gridmap.shape[0], self._gridmap.shape[1], self._res)
             # Add the goal if detected
-            cmap = colors.ListedColormap(['red', 'white'])
+            cmap = colors.ListedColormap(['white', 'red'])
             if self._goal_detected:
                 self._goal_pose, img_goal = self.goalPose(img_project)
                 print("Goal detected @: ", self._goal_pose)
-                goal_pose_grid = self._map_to_grid(self._goal_pose)
-                goal_mask = (2*self._res, 2*self._res)
-                begin_x = max(goal_pose_grid[0] - goal_mask[0], 0)
-                end_x = min(goal_pose_grid[0] + goal_mask[0], self._gridmap.shape[0])
-                begin_y = max(goal_pose_grid[1] - goal_mask[1], 0)
-                end_y = min(goal_pose_grid[1] + goal_mask[1], self._gridmap.shape[1])
-                self._gridmap[begin_x:end_x, begin_y:end_y] = 1
-                cmap = colors.ListedColormap(['red', 'white', 'green'])
+                #goal_pose_grid = self._map_to_grid(self._goal_pose)
+                #goal_mask = (2*self._res, 2*self._res)
+                #begin_x = max(goal_pose_grid[0] - goal_mask[0], 0)
+                #end_x = min(goal_pose_grid[0] + goal_mask[0], self._gridmap.shape[0])
+                #begin_y = max(goal_pose_grid[1] - goal_mask[1], 0)
+                #end_y = min(goal_pose_grid[1] + goal_mask[1], self._gridmap.shape[1])
+                #self._gridmap[begin_x:end_x, begin_y:end_y] = 1
+                #cmap = colors.ListedColormap(['red', 'white', 'green'])
             axes[1,1].imshow(self._gridmap.transpose(), cmap=cmap, origin='lower')
             axes[1,1].set_title('4- Extracted Grid Map')
 
-        return self._gridmap
+        return self._gridmap, self._goal_pose
     
+    def wait_for_map(self, cap: cv2.VideoCapture, cam_prop: CamCalib, window_name="Live camera feed"):
+        map_created = False
+        show_marker = False
+        run = True
+        cam_mat, dist_coefs, _, _ = cam_prop.load_camera_params()
+        while (run):
+            ret, frame = cap.read()
+            if not ret:
+                # End of stream: exit
+                return
+            frame_corrected, roi = cam_prop.undistord(frame, cam_mat, dist_coefs)
+            x,y,w,h = roi
+            frame_corrected = frame_corrected[y:y+h, x:x+w, :]
+            ret, img_markers = self.detectMarkers(frame_corrected)
+            if show_marker:
+                map_detected, img_markers = self.detectMap(img_markers)
+            else:
+                map_detected, img_markers = self.detectMap(frame_corrected)
+            goal_detected, img_markers = self.detectGoal(img_markers)
+            if goal_detected:
+                img_markers = cv2.putText(img_markers, "GOAL DETECTED", (img_markers.shape[1] - 300, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, [0,255,0], 2)
+            if map_detected:
+                img_markers = self.extractMapCornerPose(img_markers)
+                img_markers = cv2.putText(img_markers, "MAP DETECTED", (img_markers.shape[1] - 300, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, [0,255,0], 2)
+            cv2.imshow(window_name,img_markers)
+            key = cv2.waitKey(1)
+            if key == ord('q'):
+                run = False
+            elif key == ord(' '):
+                # Create map
+                cv2.imwrite('Vision/images/THYMIO_ENV.jpg', frame)
+                if map_detected and goal_detected:
+                    grid_map, goal_pose = self.createMap(frame_corrected, bl_marker=0)
+                    map_created = True
+                    run = False
+            elif key == ord('m'):
+                show_marker = not show_marker
+        return map_created, grid_map, goal_pose
+
+    def updateThymio(self, frame: cv2.Mat, show_markers = False):
+        img_projected = self.getProjectedMap(frame)
+        _, img_markers = self.detectMarkers(img_projected)
+        if show_markers:
+            thymio_detected, img_thymio = self.detectThymio(img_markers)
+        else:
+            thymio_detected, img_thymio = self.detectThymio(img_projected)
+        if not thymio_detected:
+            print("WARNING :: Thymio not detected")
+            return False, np.zeros((3)), np.zeros((3)), img_thymio
+        success, thymio_pose, thymio_angle, img_thymio = self.thymioPose(img_thymio)
+        self._thymio_pose_hist = np.roll(self._thymio_pose_hist, -1, 0)
+        self._thymio_pose_hist[-1, :] = np.concatenate([thymio_pose, [thymio_angle]])
+        if self._last_time == 0:
+            self._last_time = time.time_ns()
+        if self._update_count >= self._thymio_pose_hist.shape[0]:
+            self._update_count = 0
+            # Update velocities
+            diff = (time.time_ns() - self._last_time) / 1E9
+            self._last_time = time.time_ns()
+            self._thymio_vel = np.zeros(3)
+            if diff <= 1:
+                self._thymio_vel = (np.mean(self._thymio_pose_hist[-2:], 0) - np.mean(self._thymio_pose_hist[:2], 0)) / diff
+        self._update_count += 1
+        return True, self._thymio_pose_hist[-1], self._thymio_vel, img_thymio
+        
+
+
     def _map_to_grid(self, map_point) -> np.ndarray:
         return np.array(map_point*self._res, dtype=int)
     
