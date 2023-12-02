@@ -91,7 +91,7 @@ class EnvTracker:
         self._map_detected = False
         self._thymio_detected = False
         self._goal_detected = False
-        self._goal_pose = np.zeros(2)
+        self._goal_pose = np.ones(2)*-1
         self._gridmap = np.zeros((10,10)) # Arbitrary size
 
         # Thymio tracking data
@@ -320,8 +320,8 @@ class EnvTracker:
     
     def createMap(self, frame: cv2.Mat, bl_marker=0) -> tuple[np.ndarray, np.ndarray]:
         ret, img_map = self.detectMap(frame)
+        thymio_pose = np.array([-1,-1,0])
         if self._map_detected:
-            thymio_pose = np.array([-1,-1,0])
             # Replace all detected markers with white square
             img_pre_project = cv2.copyTo(frame, None)
             color = cv2.mean(img_pre_project)[0:3]
@@ -367,14 +367,40 @@ class EnvTracker:
             soby = cv2.Sobel(img_filtered, cv2.CV_64F, 0, 1, 3)
             sob = np.sqrt(sobx**2 + soby**2)
             sob = (sob * 255 / sob.max()).astype(np.uint8)
-            # Apply threshold and use morphological transformation to remove some noise
+            # Apply threshold
             cv2.threshold(sob, self.THRESHOLD, 255, cv2.THRESH_BINARY, sob)
-            kernel = np.ones((6,6), dtype=np.uint8)
-            sob = cv2.morphologyEx(sob, cv2.MORPH_OPEN, kernel)
-            cv2.adaptiveThreshold(sob, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 5, 0)
+            #sob = cv2.adaptiveThreshold(sob, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+            #-----------------------------------
+            # FROM CHATGPT ASKING ABOUT CONTOURS HIERARCHY
+            #-----------------------------------
+            contours, hierarchy = cv2.findContours(sob, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            # Filter out contours based on hierarchy
+            filtered_contours = []
+
+            for i, contour in enumerate(contours):
+                # Check if the contour has a parent (it is a hole inside another shape)
+                has_parent = hierarchy[0, i, 3] != -1
+
+                # Check if the contour has a child (it contains another shape)
+                has_child = hierarchy[0, i, 2] != -1
+
+                # Add the contour only if it doesn't have a parent or child
+                if has_parent and not has_child:
+                    filtered_contours.append(contour)
+                # Create an empty image to draw the filtered contours
+                filtered_image = np.zeros_like(sob)
+
+            # Draw the filtered contours on the empty image
+            cv2.drawContours(filtered_image, filtered_contours, -1, 255, thickness=cv2.FILLED)
+
+            #------------------------
+            # END OF CHATGPT RESCUE
+            #-----------------------
+
             axes[1,0].axis('off')
             axes[1,0].set_title('3- Apply Sobel + Threshold')
-            axes[1,0].imshow(sob, cmap='gray')
+            axes[1,0].imshow(filtered_image, cmap='gray')
 
             # Find grid shape in pixel space                        
             grid_w, grid_h = w/(self._res*self._map_size[0]), h/(self._res*self._map_size[1])
@@ -383,7 +409,7 @@ class EnvTracker:
                 for j in range(len(self._gridmap[0])):
                     c_x = math.floor(i*grid_w) + grid_w/2
                     c_y = math.floor((len(self._gridmap[0])-1-j)*grid_h) + grid_h/2
-                    im_rect = cv2.getRectSubPix(sob, ((int) (round(grid_w, 0)),(int) (round(grid_h,0))), (c_x,c_y))
+                    im_rect = cv2.getRectSubPix(filtered_image, ((int) (round(grid_w, 0)),(int) (round(grid_h,0))), (c_x,c_y))
                     self._gridmap[i,j] = 1 if cv2.sumElems(im_rect)[0] > cv2.mean(im_rect)[0] else 0
             self._configure_ax(axes[1,1], self._gridmap.shape[0], self._gridmap.shape[1], self._res)
             # Add the goal if detected
