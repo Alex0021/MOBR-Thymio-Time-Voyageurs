@@ -78,7 +78,7 @@ class EnvTracker:
         self._dist_coefs = dist_coefs
 
         # Map creation
-        self.THRESHOLD = 110
+        self.THRESHOLD = 100
         self.PROJECTED_RES = (1000, 1000)
         self._roi_map = tuple()
         self._roi_points = []
@@ -299,7 +299,7 @@ class EnvTracker:
     def updateMapROI(self, frame: cv2.Mat):
         ret, _ = self.detectMap(frame)
         if not ret:
-            print("ERROR :: Cannot update ROI of the map --> NO MAP DETECTED!")
+            print("WARNING :: Cannot update ROI of the map --> NO MAP DETECTED!")
             return False
         roi_points = []
         for i in range(4):
@@ -470,6 +470,23 @@ class EnvTracker:
             elif key == ord('m'):
                 show_marker = not show_marker
         return map_created, grid_map, goal_pose, thymio_init
+    
+
+    def wait_for_thymio(self, cap, cam_prop, window_name="Live camera feed"):
+        thymio_detected = False
+        cam_mat, dist_coefs, _, _ = cam_prop.load_camera_params()
+        while(not thymio_detected):
+            ret, frame = cap.read()
+            if not ret:
+                # End of stream: exit
+                run = False
+            frame_corrected, roi = cam_prop.undistord(frame, cam_mat, dist_coefs)
+            x,y,w,h = roi
+            frame_corrected = frame_corrected[y:y+h, x:x+w, :]
+            thymio_detected, thymio_pose, thymio_vel, img_thymio = self.updateThymio(frame_corrected, True)
+            cv2.imshow(window_name, img_thymio)
+
+        return thymio_pose
 
     def updateThymio(self, frame: cv2.Mat, show_markers = False):
         img_projected = self.getProjectedMap(frame)

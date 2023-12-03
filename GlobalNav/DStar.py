@@ -221,17 +221,26 @@ def FindGlobalPath(start, goal, global_map):
     pos = np.reshape(pos, (x.shape[0]*x.shape[1], 2))
     coords = list([(int(x[0]), int(x[1])) for x in pos])
 
-    occupancy_grid_r = global_map
+    r=6 #radius of the thymio (approx 7.8cm =3.9 boxes on grid)
+    occupancy_grid = np.zeros((max_val+2*r,max_val+2*r)) # Create an empty grid, with larger dimaensions than max_value to allow the convolution
+
+    for i in range(max_val): #Border
+        occupancy_grid[r+i,r]=1
+        occupancy_grid[r+i,max_val-1+r]=1
+        occupancy_grid[r,i+r]=1
+        occupancy_grid[max_val-1+r,i+r]=1
+
+    occupancy_grid[r:max_val+r, r:max_val+r] += global_map
+
     cmap = colors.ListedColormap(['white', 'red'])
 
     # Convolve the map
     #Make the obstacles larger to compensate thymio size (the thymio lies in a radius of ~8cm = 4 grid boxes)
     mask = create_mask()
-    data_mod = convolve(occupancy_grid_r, mask) #make the convolution between the grid and the mask, 
+    data_mod = convolve(occupancy_grid, mask) #make the convolution between the grid and the mask, 
     occupancy_grid_mod=data_mod.copy()
 
     limit = 0
-    r=6 #radius of the thymio (approx 7.8cm =3.9 boxes on grid)
     occupancy_grid_mod[data_mod>limit] = 1
     occupancy_grid_mod[data_mod<=limit] = 0
 

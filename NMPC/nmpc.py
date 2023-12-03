@@ -43,7 +43,6 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
 
     # MPC
     mpc = do_mpc.controller.MPC(model)
-
     # MPC Configuration
     setup_mpc = {
         'n_horizon': 10,
@@ -55,7 +54,10 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
         'collocation_deg': 3,
         'collocation_ni': 1,
         'store_full_solution': True,
-        'nlpsol_opts': {'ipopt.linear_solver': 'mumps'}
+        'nlpsol_opts': {'ipopt.linear_solver': 'mumps',
+                        'ipopt.print_level': 0,
+                        'print_time': 0,
+                        'ipopt.sb': 'yes'}
     }
     mpc.set_param(**setup_mpc)
 

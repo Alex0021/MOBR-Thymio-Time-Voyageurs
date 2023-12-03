@@ -32,12 +32,12 @@ def efilter(z_k_observation_vector, state_estimate_k_minus_1,
     state_estimate_k = A_k_minus_1 @ (state_estimate_k_minus_1) + (getB(state_estimate_k_minus_1[2],dk)) @ (control_vector_k_minus_1) + (process_noise_v_k_minus_1)    
     
     #print(f'State Estimate Before EKF={state_estimate_k}')
-    print(f'control vector={control_vector_k_minus_1}')
+  #  print(f'control vector={control_vector_k_minus_1}')
     
     P_k = A_k_minus_1 @ P_k_minus_1 @ A_k_minus_1.T + (Q_k)
     measurement_residual_y_k = z_k_observation_vector-((H_k @ state_estimate_k) + (sn))
     
-    print(f'Observation={z_k_observation_vector}')          
+ #   print(f'Observation={z_k_observation_vector}')          
     
     S_k = H_k @ P_k @ H_k.T + R_k
     K_k = P_k @ H_k.T @ np.linalg.pinv(S_k)

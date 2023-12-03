@@ -4,7 +4,7 @@ from IPython.display import display, clear_output
 import time
 import math
 
-def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax):
+def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax, best_path=None):
     # Plot
     # Plot Map
     ax.imshow(map_global, cmap='binary', origin='lower')
@@ -32,5 +32,8 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax):
     dx = math.cos(closest_angle)#angle_radians
     dy = math.sin(closest_angle)#closest_angle
     ax.quiver(x, y, dx, dy, angles='xy', scale_units='xy', scale=0.1, color='r', width=0.01)
+
+    if best_path is not None:
+        ax.plot(best_path[0], best_path[1], marker='o', color='blue')
 
 
