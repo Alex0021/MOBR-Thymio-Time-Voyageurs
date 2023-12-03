@@ -33,5 +33,3 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle):
     dy = math.sin(closest_angle)#closest_angle
     plt.quiver(x, y, dx, dy, angles='xy', scale_units='xy', scale=0.1, color='r', width=0.01)
 
-
-    plt.show()

@@ -78,7 +78,7 @@ class EnvTracker:
         self._dist_coefs = dist_coefs
 
         # Map creation
-        self.THRESHOLD = 80
+        self.THRESHOLD = 110
         self.PROJECTED_RES = (1000, 1000)
         self._roi_map = tuple()
         self._roi_points = []
@@ -362,7 +362,7 @@ class EnvTracker:
                 cv2.fillPoly(img_no_marker, corners.astype(int), color)
             # Apply Sobel filter to extract edges
             img = cv2.cvtColor(img_no_marker, cv2.COLOR_BGR2GRAY)
-            img_filtered = cv2.GaussianBlur(img, (11,11), 9)
+            img_filtered = cv2.GaussianBlur(img, (13,13), 9)
             sobx = cv2.Sobel(img_filtered, cv2.CV_64F, 1, 0, 3)
             soby = cv2.Sobel(img_filtered, cv2.CV_64F, 0, 1, 3)
             sob = np.sqrt(sobx**2 + soby**2)
