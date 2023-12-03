@@ -138,9 +138,7 @@ class EnvTracker:
         # Check if thymio markers were found in image
         self._thymio_detected = np.all(np.isin(self.THYMIO_MARKER_IDS, list(self._detected_markers.keys())))
         new_thymio_corners = np.zeros((4,2))
-        if not self._thymio_detected:
-            print("WARNING :: THYMIO MARKERS NOT DETECTED! Try calling detectMarkers()")
-        else:
+        if self._thymio_detected:
             # Left Marker
             new_thymio_corners[0,:] = self._detected_markers[self.THYMIO_MARKER_IDS[0]][0][0,:]
             new_thymio_corners[3,:] = self._detected_markers[self.THYMIO_MARKER_IDS[0]][0][3,:]
@@ -229,10 +227,11 @@ class EnvTracker:
             self._goal_pose = self._convertToOriginReferential(self._map_corner_axes[0], self._map_corner_axes[1], tvec)[0,:2]
         return self._goal_pose, img_detect
     
-    def thymioPose(self, frame: cv2.Mat) -> tuple[bool, np.ndarray, float, cv2.Mat]:
+    def thymioPose(self, frame: cv2.Mat, verbose=False) -> tuple[bool, np.ndarray, float, cv2.Mat]:
         img_detect = cv2.copyTo(frame, None)
         if not self._thymio_detected:
-            print("WARNING :: THYMIO NO DETECTED. Try calling detect thymio before")
+            if verbose:
+                print("WARNING :: THYMIO NO DETECTED. Try calling detect thymio before")
             return False, np.ones(2)*-1, 0.0, img_detect
         
         # Estimate position of center point (simple mean of all 8 corner points)
@@ -293,13 +292,14 @@ class EnvTracker:
         x,y,w,h = self._roi_map
         m_perspective = cv2.getPerspectiveTransform(np.float32(self._roi_points), np.float32([[0,h],[0,0],[w,0],[w,h]]))
         img_map = cv2.warpPerspective(frame, m_perspective, (w,h))
-        img_map = cv2.resize(img_map, self.PROJECTED_RES, cv2.INTER_LINEAR)
+        #img_map = cv2.resize(img_map, self.PROJECTED_RES, cv2.INTER_LINEAR)
         return img_map
     
-    def updateMapROI(self, frame: cv2.Mat):
+    def updateMapROI(self, frame: cv2.Mat, verbose=False):
         ret, _ = self.detectMap(frame)
         if not ret:
-            print("WARNING :: Cannot update ROI of the map --> NO MAP DETECTED!")
+            if verbose:
+                print("WARNING :: Cannot update ROI of the map --> NO MAP DETECTED!")
             return False
         roi_points = []
         for i in range(4):
@@ -354,14 +354,22 @@ class EnvTracker:
             axes[0,0].imshow(img_map[:,:,::-1])
             axes[0,1].axis('off')
             axes[0,1].set_title('2- Retrieve projection')
-            axes[0,1].imshow(img_goal[:,:,::-1])
+            #axes[0,1].imshow(img_goal[:,:,::-1])
 
             # Hide all markers before obstacles detection
             img_no_marker = cv2.copyTo(img_project, None)
-            for corners in self._detected_markers.values():
-                cv2.fillPoly(img_no_marker, corners.astype(int), color)
-            # Apply Sobel filter to extract edges
             img = cv2.cvtColor(img_no_marker, cv2.COLOR_BGR2GRAY)
+            color = cv2.mean(img)[0:3]
+            mask = np.zeros_like(img)
+            for k,corners in self._detected_markers.items():
+                if k in self.THYMIO_MARKER_IDS:
+                    cv2.fillPoly(mask, corners.astype(int), color)
+                else:
+                    cv2.fillPoly(img, corners.astype(int), color)
+            mask = cv2.dilate(mask, np.ones((30,30)), iterations=2)
+            cv2.bitwise_or(img, mask, img)
+            axes[0,1].imshow(img, cmap='gray')
+            # Apply Sobel filter to extract edges
             img_filtered = cv2.GaussianBlur(img, (13,13), 9)
             sobx = cv2.Sobel(img_filtered, cv2.CV_64F, 1, 0, 3)
             soby = cv2.Sobel(img_filtered, cv2.CV_64F, 0, 1, 3)
@@ -385,7 +393,6 @@ class EnvTracker:
                 # Check if the contour has a child (it contains another shape)
                 has_child = hierarchy[0, i, 2] != -1
 
-                # Add the contour only if it doesn't have a parent or child
                 if has_parent and not has_child:
                     filtered_contours.append(contour)
                 # Create an empty image to draw the filtered contours
@@ -436,7 +443,8 @@ class EnvTracker:
         run = True
         cam_mat, dist_coefs, _, _ = cam_prop.load_camera_params()
         grid_map = np.zeros((10,10))
-        goal_pose = np.zeros(2)
+        goal_pose = np.ones(2)*-1
+        thymio_init = np.ones(2)*-1
         while (run):
             ret, frame = cap.read()
             if not ret:
@@ -488,7 +496,7 @@ class EnvTracker:
 
         return thymio_pose
 
-    def updateThymio(self, frame: cv2.Mat, show_markers = False):
+    def updateThymio(self, frame: cv2.Mat, show_markers = False, verbose=False):
         img_projected = self.getProjectedMap(frame)
         _, img_markers = self.detectMarkers(img_projected)
         if show_markers:
@@ -496,7 +504,8 @@ class EnvTracker:
         else:
             thymio_detected, img_thymio = self.detectThymio(img_projected)
         if not thymio_detected:
-            print("WARNING :: Thymio not detected")
+            if verbose:
+                print("WARNING :: Thymio not detected")
             return False, np.zeros((3)), np.zeros((3)), img_thymio
         success, thymio_pose, thymio_angle, img_thymio = self.thymioPose(img_thymio)
         self._thymio_pose_hist = np.roll(self._thymio_pose_hist, -1, 0)
@@ -513,7 +522,6 @@ class EnvTracker:
                 self._thymio_vel = (np.mean(self._thymio_pose_hist[-2:], 0) - np.mean(self._thymio_pose_hist[:2], 0)) / diff
         self._update_count += 1
         return True, self._thymio_pose_hist[-1], self._thymio_vel, img_thymio
-        
 
 
     def _map_to_grid(self, map_point) -> np.ndarray:

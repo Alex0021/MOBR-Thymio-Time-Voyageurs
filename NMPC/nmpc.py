@@ -77,10 +77,10 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
 
     # Constraints bounds on States:
     
-    mpc.bounds['upper','_x', 'x'] = 100 #100 map size
-    mpc.bounds['lower','_x', 'x'] = -100
-    mpc.bounds['upper','_x', 'y'] = 100
-    mpc.bounds['lower','_x', 'y'] = -100
+    mpc.bounds['upper','_x', 'x'] = 120 #100 map size
+    mpc.bounds['lower','_x', 'x'] = -120
+    mpc.bounds['upper','_x', 'y'] = 120
+    mpc.bounds['lower','_x', 'y'] = -120
     
     
     mpc.bounds['upper','_x', 'theta'] = math.pi
