@@ -78,7 +78,7 @@ class EnvTracker:
         self._dist_coefs = dist_coefs
 
         # Map creation
-        self.THRESHOLD = 100
+        self.THRESHOLD = 110
         self.PROJECTED_RES = (1000, 1000)
         self._roi_map = tuple()
         self._roi_points = []
@@ -91,7 +91,7 @@ class EnvTracker:
         self._map_detected = False
         self._thymio_detected = False
         self._goal_detected = False
-        self._goal_pose = np.zeros(2)
+        self._goal_pose = np.ones(2)*-1
         self._gridmap = np.zeros((10,10)) # Arbitrary size
 
         # Thymio tracking data
@@ -233,7 +233,7 @@ class EnvTracker:
         img_detect = cv2.copyTo(frame, None)
         if not self._thymio_detected:
             print("WARNING :: THYMIO NO DETECTED. Try calling detect thymio before")
-            return False, np.zeros(2), 0.0, img_detect
+            return False, np.ones(2)*-1, 0.0, img_detect
         
         # Estimate position of center point (simple mean of all 8 corner points)
         corners = np.concatenate((self._detected_markers[self.THYMIO_MARKER_IDS[0]][0], self._detected_markers[self.THYMIO_MARKER_IDS[1]][0]))
@@ -245,7 +245,7 @@ class EnvTracker:
         # Show heading
         cv2.arrowedLine(img_detect, thymio_pose.astype(int), arrow_head.astype(int), self.DETECTED_THYMIO_COLOR, 3)
         # Compute angle
-        angle = np.arctan2(-heading[0],-heading[1])
+        angle = np.arctan2(-heading[1],heading[0])
         # Compensate for corner ref
         thymio_pose[1] = frame.shape[0] - thymio_pose[1]
         # Convert to world pose
@@ -318,8 +318,9 @@ class EnvTracker:
         p = np.vstack((tvec_new.reshape((3,1)), [1]))
         return np.linalg.solve(P,p)[0:3].T
     
-    def createMap(self, frame: cv2.Mat, bl_marker=0) -> np.ndarray:
+    def createMap(self, frame: cv2.Mat, bl_marker=0) -> tuple[np.ndarray, np.ndarray]:
         ret, img_map = self.detectMap(frame)
+        thymio_pose = np.array([-1,-1,0])
         if self._map_detected:
             # Replace all detected markers with white square
             img_pre_project = cv2.copyTo(frame, None)
@@ -337,6 +338,10 @@ class EnvTracker:
             ret, _ = self.detectMarkers(img_project)
             # Find goal pose
             ret, img_goal = self.detectGoal(img_project)
+            # Find Thymio pose (if any)
+            ret, img_thymio = self.detectThymio(img_project)
+            if ret:
+                ret, thymio_pose[:2], thymio_pose[2], _ = self.thymioPose(img_project)
             # Rotate image to have marker 0 in BL corner
             if bl_marker > 0:
                 cv2.rotate(img_project, bl_marker-1, img_project)
@@ -357,20 +362,45 @@ class EnvTracker:
                 cv2.fillPoly(img_no_marker, corners.astype(int), color)
             # Apply Sobel filter to extract edges
             img = cv2.cvtColor(img_no_marker, cv2.COLOR_BGR2GRAY)
-            img_filtered = cv2.GaussianBlur(img, (11,11), 9)
+            img_filtered = cv2.GaussianBlur(img, (13,13), 9)
             sobx = cv2.Sobel(img_filtered, cv2.CV_64F, 1, 0, 3)
             soby = cv2.Sobel(img_filtered, cv2.CV_64F, 0, 1, 3)
             sob = np.sqrt(sobx**2 + soby**2)
             sob = (sob * 255 / sob.max()).astype(np.uint8)
-            # Thicken the edges
-            #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9,9))
-            #sob = cv2.dilate(sob, kernel)
-            # Apply threshold for binary transformation
+            # Apply threshold
             cv2.threshold(sob, self.THRESHOLD, 255, cv2.THRESH_BINARY, sob)
-            #cv2.adaptiveThreshold(sob, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 5, 0)
+            #sob = cv2.adaptiveThreshold(sob, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+            #-----------------------------------
+            # FROM CHATGPT ASKING ABOUT CONTOURS HIERARCHY
+            #-----------------------------------
+            contours, hierarchy = cv2.findContours(sob, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            # Filter out contours based on hierarchy
+            filtered_contours = []
+
+            for i, contour in enumerate(contours):
+                # Check if the contour has a parent (it is a hole inside another shape)
+                has_parent = hierarchy[0, i, 3] != -1
+
+                # Check if the contour has a child (it contains another shape)
+                has_child = hierarchy[0, i, 2] != -1
+
+                # Add the contour only if it doesn't have a parent or child
+                if has_parent and not has_child:
+                    filtered_contours.append(contour)
+                # Create an empty image to draw the filtered contours
+                filtered_image = np.zeros_like(sob)
+
+            # Draw the filtered contours on the empty image
+            cv2.drawContours(filtered_image, filtered_contours, -1, 255, thickness=cv2.FILLED)
+
+            #------------------------
+            # END OF CHATGPT RESCUE
+            #-----------------------
+
             axes[1,0].axis('off')
             axes[1,0].set_title('3- Apply Sobel + Threshold')
-            axes[1,0].imshow(sob, cmap='gray')
+            axes[1,0].imshow(filtered_image, cmap='gray')
 
             # Find grid shape in pixel space                        
             grid_w, grid_h = w/(self._res*self._map_size[0]), h/(self._res*self._map_size[1])
@@ -379,7 +409,7 @@ class EnvTracker:
                 for j in range(len(self._gridmap[0])):
                     c_x = math.floor(i*grid_w) + grid_w/2
                     c_y = math.floor((len(self._gridmap[0])-1-j)*grid_h) + grid_h/2
-                    im_rect = cv2.getRectSubPix(sob, ((int) (round(grid_w, 0)),(int) (round(grid_h,0))), (c_x,c_y))
+                    im_rect = cv2.getRectSubPix(filtered_image, ((int) (round(grid_w, 0)),(int) (round(grid_h,0))), (c_x,c_y))
                     self._gridmap[i,j] = 1 if cv2.sumElems(im_rect)[0] > cv2.mean(im_rect)[0] else 0
             self._configure_ax(axes[1,1], self._gridmap.shape[0], self._gridmap.shape[1], self._res)
             # Add the goal if detected
@@ -398,18 +428,20 @@ class EnvTracker:
             axes[1,1].imshow(self._gridmap.transpose(), cmap=cmap, origin='lower')
             axes[1,1].set_title('4- Extracted Grid Map')
 
-        return self._gridmap, self._goal_pose
+        return self._gridmap, self._goal_pose, thymio_pose
     
     def wait_for_map(self, cap: cv2.VideoCapture, cam_prop: CamCalib, window_name="Live camera feed"):
         map_created = False
         show_marker = False
         run = True
         cam_mat, dist_coefs, _, _ = cam_prop.load_camera_params()
+        grid_map = np.zeros((10,10))
+        goal_pose = np.zeros(2)
         while (run):
             ret, frame = cap.read()
             if not ret:
                 # End of stream: exit
-                return
+                run = False
             frame_corrected, roi = cam_prop.undistord(frame, cam_mat, dist_coefs)
             x,y,w,h = roi
             frame_corrected = frame_corrected[y:y+h, x:x+w, :]
@@ -432,12 +464,12 @@ class EnvTracker:
                 # Create map
                 cv2.imwrite('Vision/images/THYMIO_ENV.jpg', frame)
                 if map_detected and goal_detected:
-                    grid_map, goal_pose = self.createMap(frame_corrected, bl_marker=0)
+                    grid_map, goal_pose, thymio_init = self.createMap(frame_corrected, bl_marker=0)
                     map_created = True
                     run = False
             elif key == ord('m'):
                 show_marker = not show_marker
-        return map_created, grid_map, goal_pose
+        return map_created, grid_map, goal_pose, thymio_init
 
     def updateThymio(self, frame: cv2.Mat, show_markers = False):
         img_projected = self.getProjectedMap(frame)
