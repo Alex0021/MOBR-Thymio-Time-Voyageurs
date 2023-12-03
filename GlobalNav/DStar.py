@@ -196,19 +196,19 @@ def D_Star_lite(start, goal, coords, occupancy_grid, movement_type="4N", max_val
 
 def create_mask():
     #Create the mask, its approximatively the circle in which the thymio can lie without tuching the border
-    mask=np.ones((9,9))
+    mask=np.ones((11,11))
     mask[0,0]=0
     mask[0,1]=0
     mask[1,0]=0
-    mask[0,8]=0
-    mask[1,8]=0
-    mask[0,7]=0
-    mask[8,0]=0
-    mask[8,1]=0
-    mask[7,0]=0
-    mask[8,8]=0
-    mask[7,8]=0
-    mask[8,7]=0
+    mask[0,10]=0
+    mask[1,10]=0
+    mask[0,9]=0
+    mask[10,0]=0
+    mask[10,1]=0
+    mask[9,0]=0
+    mask[10,10]=0
+    mask[9,10]=0
+    mask[10,9]=0
     return mask
 
 
