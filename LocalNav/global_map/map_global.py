@@ -78,6 +78,7 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
 
         if updated_mask[i]:
             draw_line(map_global, x0, y0, x1, y1)
+
                 
     return map_global
     
