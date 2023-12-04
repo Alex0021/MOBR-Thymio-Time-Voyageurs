@@ -91,7 +91,7 @@ class CamCalib():
         np.savez('data/calib_params', cam_mat, dist_mat, rvecs, tvecs)
         print("Calibration settings saved in ", 'files/calib_params')
 
-    def undistord(self, frame: cv2.Mat, cam_mat, dist_coefs) -> tuple[cv2.Mat, tuple]:
+    def undistord(self, frame: cv2.Mat, cam_mat, dist_coefs):
         w,h = frame.shape[0:2][::-1]
         img_borders = cv2.copyTo(frame, None)
         new_cam_mat, roi = cv2.getOptimalNewCameraMatrix(cam_mat, dist_coefs, (w,h), 1, (w,h), 0)

@@ -42,7 +42,7 @@ def localNav(abs_pos, goal_position, prox_horizontal, map_global):
 
     # Compute absolute values
     # Rotation matrix
-    theta = abs_pos[0][2]
+    theta = -abs_pos[0][2]+math.pi/2
     rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
                             [np.sin(theta), np.cos(theta)]])
     # Thymio
