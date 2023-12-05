@@ -111,19 +111,20 @@ def convolution_map(grid):
     :return: A convoluted map which has its obstacles made larger
     """
     #Create the mask, its approximatively the circle in which the thymio can lie without tuching the border
-    mask=np.ones((11,11))
+    r=13
+    mask=np.ones((r,r))
     mask[0,0]=0
     mask[0,1]=0
     mask[1,0]=0
-    mask[0,10]=0
-    mask[1,10]=0
-    mask[0,9]=0
-    mask[10,0]=0
-    mask[10,1]=0
-    mask[9,0]=0
-    mask[10,10]=0
-    mask[9,10]=0
-    mask[10,9]=0
+    mask[0,r-1]=0
+    mask[1,r-1]=0
+    mask[0,r-2]=0
+    mask[r-1,0]=0
+    mask[r-1,1]=0
+    mask[r-2,0]=0
+    mask[r-1,r-1]=0
+    mask[r-2,r-1]=0
+    mask[r-1,r-2]=0
 
     convolved_grid=convolve2d(grid, mask,mode='same') #make the convolution between the grid and the mask,
     
@@ -155,7 +156,7 @@ km=0
 
 
 
-def D_Star_lite(start, goal, coords, occupancy_grid_actual,occupancy_grid_initial, movement_type="8N", max_val=120):
+def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, movement_type="8N", max_val=120):
     """
     D*Lite for 2D occupancy grid. Finds a path from start to goal and can efficiently handle obstacle changes.
     h is the heuristic function. h(n) estimates the cost to reach goal from node n.
@@ -199,8 +200,9 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual,occupancy_grid_initia
     closedSetIter=[] #show the visited nodes during the iteration
 
 
-    if (occupancy_grid_initial-occupancy_grid_actual).all()==0: #initialization
-
+    if np.array_equal(occupancy_grid_actual,occupancy_grid_initial): #initialization
+        print("state = ",state)
+        print("initialization")
         previous_start=start
 
         # For node n, gScore[n] is the cost of the cheapest path from start to n knowing the initial states of the research.
@@ -225,17 +227,22 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual,occupancy_grid_initia
         current=goal
 
 
-    if (occupancy_grid_initial-occupancy_grid_actual).any()==1:
+    if not np.array_equal(occupancy_grid_actual,occupancy_grid_initial):
         state=1
         
-        km=h(start,previous_start)
+        #km=h(start,previous_start)
+        previous_start=start
+
+        print("state = ",state)
+        print("update")
+        print("gScore = ",gScore)
 
         modified_nodes=[]
         for i in range(len(coords)):    
-            if (occupancy_grid_acutal[coords[i]]-occupancy_grid_initial[coords[i]]):
+            if (occupancy_grid_actual[coords[i]]-occupancy_grid_initial[coords[i]]):
                 current=coords[i]
                 rhs[current]=np.inf
-                openSet[current] = Key(current)
+                openSet[current] = Key(current,start)
                 modified_nodes.append(current)
 
 
@@ -249,7 +256,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual,occupancy_grid_initia
                 if (occupancy_grid_actual[neighbor[0], neighbor[1]]): 
                         continue
                 if neighbor not in openSet:
-                    openSet[neighbor]=Key(neighbor)
+                    openSet[neighbor]=Key(neighbor,start)
 
 
 
@@ -360,7 +367,7 @@ def FindGlobalPath(start, goal, global_map, previous_map):
 
     # Displaying the map
     fig_astar, ax_astar = create_empty_plot(max_val)
-    ax_astar.imshow(occupancy_grid_conv.transpose(), cmap=cmap)
+    ax_astar.imshow(global_map.transpose(), cmap=cmap)
 
     # Plot the best path found and the list of visited nodes
     ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
