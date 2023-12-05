@@ -4,7 +4,7 @@ from casadi import *
 import do_mpc
 import matplotlib.pyplot as plt
 
-def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
+def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y, hme_measurement):
     
     # Define the model
     model_type = 'discrete'  # 'continuous' or 'discrete'
@@ -29,7 +29,6 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
     y_k1 = y + dy
     theta_k1 = theta - dtheta
     
-
     # Model constraints
     model.set_rhs('x', x_k1)
     model.set_rhs('y', y_k1)
@@ -43,6 +42,7 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
 
     # MPC
     mpc = do_mpc.controller.MPC(model)
+
     # MPC Configuration
     setup_mpc = {
         'n_horizon': 10,
@@ -59,7 +59,6 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
                         'print_time': 0,
                         'ipopt.sb': 'yes'}
     }
-    mpc.set_param(**setup_mpc)
 
     # Goal
     rx=goal_position[0][0]
@@ -72,16 +71,13 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
     # Set the objective for the MPC instance
     mpc.set_objective(mterm=mterm, lterm=lterm)
 
-    # Set rate-of-change term for the MPC instance
-    mpc.set_rterm(u_r=1e-2, u_l=1e-2)  # You can adjust the value based on your specific application
+    
 
     # Constraints bounds on States:
-    
-    mpc.bounds['upper','_x', 'x'] = 120 #100 map size
+    mpc.bounds['upper','_x', 'x'] = 120  # 100 map size
     mpc.bounds['lower','_x', 'x'] = -120
     mpc.bounds['upper','_x', 'y'] = 120
     mpc.bounds['lower','_x', 'y'] = -120
-    
     
     mpc.bounds['upper','_x', 'theta'] = math.pi
     mpc.bounds['lower','_x', 'theta'] = -math.pi
@@ -91,13 +87,13 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
     mpc.bounds['lower','_u', 'u_r'] = -20
     mpc.bounds['upper','_u', 'u_l'] = 20
     mpc.bounds['lower','_u', 'u_l'] = -20
-    
 
     # Setup the MPC instance
     mpc.setup()
 
     # Set initial guess for the solver
     mpc.set_initial_guess()  # Provide your initial guess for the control inputs u0
+
 
     # Simulation
     simulator = do_mpc.simulator.Simulator(model)
