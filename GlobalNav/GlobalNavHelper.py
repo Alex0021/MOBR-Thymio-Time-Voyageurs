@@ -6,17 +6,18 @@ from scipy.ndimage import convolve
 from scipy.signal import convolve2d
 
 
-def create_empty_plot(max_val):
+def create_empty_plot(max_val, ax=None):
     """
     Helper function to create a figure of the desired dimensions & grid
     
     :param max_val: dimension of the map along the x and y dimensions
     :return: the fig and ax objects.
     """
-    fig, ax = plt.subplots(figsize=(7,7))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(7,7))
     
-    major_ticks = np.arange(0, max_val+1, 5)
-    minor_ticks = np.arange(0, max_val+1, 1)
+    major_ticks = np.arange(0, max_val+1, 10)
+    minor_ticks = np.arange(0, max_val+1, 5)
     ax.set_xticks(major_ticks)
     ax.set_xticks(minor_ticks, minor=True)
     ax.set_yticks(major_ticks)
@@ -27,7 +28,7 @@ def create_empty_plot(max_val):
     ax.set_xlim([-1,max_val])
     ax.grid(True)
     
-    return fig, ax
+    return ax
 
 
 
@@ -156,7 +157,7 @@ km=0
 
 
 
-def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, movement_type="8N", max_val=120):
+def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, movement_type="8N", max_val=120, ):
     """
     D*Lite for 2D occupancy grid. Finds a path from start to goal and can efficiently handle obstacle changes.
     h is the heuristic function. h(n) estimates the cost to reach goal from node n.
@@ -333,7 +334,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     return [], closedSet, closedSetIter
 
 
-def FindGlobalPath(start, goal, global_map, previous_map):
+def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
     # List of all coordinates in the grid
     max_val = global_map.shape[0]
     x,y = np.mgrid[0:max_val:1, 0:max_val:1]
@@ -366,7 +367,7 @@ def FindGlobalPath(start, goal, global_map, previous_map):
     visitedNodesIter = np.array(visitedNodesIter).reshape(-1, 2).transpose()
 
     # Displaying the map
-    fig_astar, ax_astar = create_empty_plot(max_val)
+    ax_astar = create_empty_plot(max_val, ax_astar)
     ax_astar.imshow(global_map.transpose(), cmap=cmap)
 
     # Plot the best path found and the list of visited nodes
