@@ -4,7 +4,7 @@ from IPython.display import display, clear_output
 import time
 import math
 
-def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax, best_path=None):
+def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax, best_path=None, next_target=None):
     # Plot
     # Plot Map
     ax.imshow(map_global, cmap='binary', origin='lower')
@@ -35,5 +35,8 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax, b
 
     if best_path is not None:
         ax.plot(best_path[0], best_path[1], marker='o', color='blue')
+
+    if next_target is not None:
+        ax.plot(next_target[0], next_target[1], marker='x', color='orange', markersize=20)
 
 

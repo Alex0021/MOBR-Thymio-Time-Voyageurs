@@ -3,7 +3,7 @@ import numpy as np
 
 ## Sensor measurements
 sensor_distances = np.array([i for i in range(0,21)])
-sensor_measurements = np.array([5120, 4996, 4964, 4935, 4554, 4018, 3624, 3292, 2987, 
+sensor_measurements = np.array([5150, 4996, 4964, 4935, 4554, 4018, 3624, 3292, 2987, 
               2800, 2580, 2307, 2039, 1575, 1127, 833, 512, 358, 157, 52, 0])
 
 # Thymio outline
