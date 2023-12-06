@@ -16,6 +16,8 @@ def create_empty_plot(max_val, ax=None):
     if ax is None:
         fig, ax = plt.subplots(figsize=(7,7))
     
+    ax.clear()
+    ax.set_title('D* Plan')
     major_ticks = np.arange(0, max_val+1, 10)
     minor_ticks = np.arange(0, max_val+1, 5)
     ax.set_xticks(major_ticks)
@@ -180,7 +182,10 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     
     # check if start and goal nodes correspond to free spaces
     if occupancy_grid_actual[start[0], start[1]]:
-        raise Exception('Start node is not traversable')
+        #raise Exception('Start node is not traversable')
+        # Open set is empty but goal was never reached
+        print("WARNING :: Start node is not traversable")
+        return [], [], []
 
     if occupancy_grid_actual[goal[0], goal[1]]:
         raise Exception('Goal node is not traversable')
@@ -343,6 +348,16 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
     pos = np.reshape(pos, (x.shape[0]*x.shape[1], 2))
     coords = list([(int(x[0]), int(x[1])) for x in pos])
 
+    for i in range(max_val):
+        global_map[i,0] = 1
+        global_map[i,max_val-1] = 1
+        global_map[0,i] = 1
+        global_map[max_val-1,i] = 1
+        previous_map[i,0] = 1
+        previous_map[i,max_val-1] = 1
+        previous_map[0,i] = 1
+        previous_map[max_val-1,i] = 1
+
 
     cmap = colors.ListedColormap(['white', 'red'])
 
@@ -362,17 +377,19 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
 
     # Run the D* algorithm
     path, visitedNodes, visitedNodesIter = D_Star_lite(start, goal, coords, occupancy_grid_conv,previous_grid_conv, movement_type="8N",max_val=max_val)
+    if len(path) == 0:
+        return []
     path = np.array(path).reshape(-1, 2).transpose()
     visitedNodes = np.array(visitedNodes).reshape(-1, 2).transpose()
     visitedNodesIter = np.array(visitedNodesIter).reshape(-1, 2).transpose()
 
     # Displaying the map
     ax_astar = create_empty_plot(max_val, ax_astar)
-    ax_astar.imshow(global_map.transpose(), cmap=cmap)
 
     # Plot the best path found and the list of visited nodes
     ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
     ax_astar.scatter(visitedNodesIter[0], visitedNodesIter[1], marker="o", color = 'green');
+    ax_astar.imshow(global_map.transpose(), cmap=cmap)
     ax_astar.plot(path[0], path[1], marker="o", color = 'blue');
     ax_astar.scatter(start[0], start[1], marker="o", color = 'green', s=200);
     ax_astar.scatter(goal[0], goal[1], marker="o", color = 'purple', s=200);

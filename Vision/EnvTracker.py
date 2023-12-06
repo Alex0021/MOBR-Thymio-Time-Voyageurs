@@ -93,6 +93,7 @@ class EnvTracker:
         self._goal_detected = False
         self._goal_pose = np.ones(2)*-1
         self._gridmap = np.zeros((10,10)) # Arbitrary size
+        self.THYMIO_Y_ADJS = 0.95
 
         # Thymio tracking data
         self._thymio_pose_hist = np.zeros((10,3))
@@ -247,6 +248,8 @@ class EnvTracker:
         angle = np.arctan2(-heading[1],heading[0])
         # Compensate for corner ref
         thymio_pose[1] = frame.shape[0] - thymio_pose[1]
+        #Compensate for camera
+        thymio_pose[1] = self.THYMIO_Y_ADJS*thymio_pose[1]
         # Convert to world pose
         thymio_pose = thymio_pose / self._world_to_pixels
 
@@ -501,8 +504,13 @@ class EnvTracker:
         _, img_markers = self.detectMarkers(img_projected)
         if show_markers:
             thymio_detected, img_thymio = self.detectThymio(img_markers)
+            goal_detected, img_thymio = self.detectGoal(img_thymio)
         else:
             thymio_detected, img_thymio = self.detectThymio(img_projected)
+            goal_detected, img_thymio = self.detectGoal(img_thymio)
+        if goal_detected:
+            # Update goal pose variable
+            self.goalPose(img_projected)
         if not thymio_detected:
             if verbose:
                 print("WARNING :: Thymio not detected")

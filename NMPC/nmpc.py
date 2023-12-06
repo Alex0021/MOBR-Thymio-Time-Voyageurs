@@ -87,10 +87,10 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
     mpc.bounds['lower','_x', 'theta'] = -math.pi
     
     # Constraints bounds on inputs: (20cm/s)
-    mpc.bounds['upper','_u', 'u_r'] = 20
-    mpc.bounds['lower','_u', 'u_r'] = -20
-    mpc.bounds['upper','_u', 'u_l'] = 20
-    mpc.bounds['lower','_u', 'u_l'] = -20
+    mpc.bounds['upper','_u', 'u_r'] = 10
+    mpc.bounds['lower','_u', 'u_r'] = -10
+    mpc.bounds['upper','_u', 'u_l'] = 10
+    mpc.bounds['lower','_u', 'u_l'] = -10
     
 
     # Setup the MPC instance
