@@ -114,7 +114,7 @@ def convolution_map(grid):
     :return: A convoluted map which has its obstacles made larger
     """
     #Create the mask, its approximatively the circle in which the thymio can lie without tuching the border
-    r=15
+    r=13
     mask=np.ones((r,r))
     mask[0,0]=0
     mask[0,1]=0
@@ -287,8 +287,9 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 # if the node is occupied or has already been visited, skip
                 if (occupancy_grid_initial[neighbor[0], neighbor[1]]): #or (gScore[neighbor] == rhs[neighbor]<1000.0): 
                     continue
-                if cameFrom[neighbor]==current and neighbor in cameFrom:
-                    rhs[neighbor] = np.inf
+                if neighbor in cameFrom:
+                    if cameFrom[neighbor]==current:
+                        rhs[neighbor] = np.inf
         
 
         #If the goal is reached, reconstruct and return the obtained path
@@ -384,7 +385,7 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
     ax_astar = create_empty_plot(max_val, ax_astar)
 
     # Plot the best path found and the list of visited nodes
-    ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
+    #ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
     ax_astar.scatter(visitedNodesIter[0], visitedNodesIter[1], marker="o", color = 'green');
     ax_astar.imshow(global_map.transpose(), cmap=cmap)
     ax_astar.plot(path[0], path[1], marker="o", color = 'blue');

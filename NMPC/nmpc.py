@@ -36,7 +36,7 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
     model.set_rhs('theta', theta_k1)
     model.set_rhs('dx', ((u_r + u_l) / 2) * cos(theta) )
     model.set_rhs('dy', ((u_r + u_l) / 2) * sin(theta) )
-    model.set_rhs('dtheta', -(u_r - u_l) / (2 * d))
+    model.set_rhs('dtheta', (u_r - u_l) / (2 * d))
 
     # Set up the model
     model.setup()
@@ -113,6 +113,7 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
 
     # Set parameter function for the simulator
     p_template = simulator.get_p_template()
+    simulator.set_param(t_step=0.5)
 
     def p_fun(t_now):
         return p_template
