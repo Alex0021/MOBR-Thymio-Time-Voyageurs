@@ -14,7 +14,7 @@ def sensor_val(val, sensor_measurements, sensor_distances):# in cm
         return np.inf
     
     f = interp1d(sensor_measurements, sensor_distances)
-    return max(f(val).item() + 3, 0)
+    return f(val).item()
 
 def obstacles_pos(sensor_vals, sensor_measurements, sensor_distances, sensor_pos_from_center, sensor_angles):
     """

@@ -114,7 +114,7 @@ def convolution_map(grid):
     :return: A convoluted map which has its obstacles made larger
     """
     #Create the mask, its approximatively the circle in which the thymio can lie without tuching the border
-    r=13
+    r=15
     mask=np.ones((r,r))
     mask[0,0]=0
     mask[0,1]=0
@@ -287,7 +287,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 # if the node is occupied or has already been visited, skip
                 if (occupancy_grid_initial[neighbor[0], neighbor[1]]): #or (gScore[neighbor] == rhs[neighbor]<1000.0): 
                     continue
-                if cameFrom[neighbor]==current:
+                if cameFrom[neighbor]==current and neighbor in cameFrom:
                     rhs[neighbor] = np.inf
         
 
