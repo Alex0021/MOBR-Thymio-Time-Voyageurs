@@ -4,7 +4,7 @@ from IPython.display import display, clear_output
 import time
 import math
 
-def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax, best_path=None, next_target=None):
+def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, min_x, min_y,max_x, max_y, ax, best_path=None, next_target=None):
     # Plot
     # Plot Map
     ax.imshow(map_global, cmap='binary', origin='lower')
@@ -38,5 +38,12 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, ax, b
 
     if next_target is not None:
         ax.plot(next_target[0], next_target[1], marker='x', color='orange', markersize=20)
+
+    # Coordinates of the rectangle's corners
+    x_coordinates = [min_x, max_x, max_x, min_x, min_x]
+    y_coordinates = [min_y, min_y, max_y, max_y, min_y]
+
+    # Plotting the rectangle
+    ax.plot(x_coordinates, y_coordinates, 'r--', label='Rectangle')
 
 

@@ -36,7 +36,7 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
     model.set_rhs('theta', theta_k1)
     model.set_rhs('dx', ((u_r + u_l) / 2) * cos(theta) )
     model.set_rhs('dy', ((u_r + u_l) / 2) * sin(theta) )
-    model.set_rhs('dtheta', (u_r - u_l) / (2 * d))
+    model.set_rhs('dtheta', -(u_r - u_l) / (2 * d))
 
     # Set up the model
     model.setup()
@@ -77,20 +77,20 @@ def nmpc(abs_pos, goal_position, min_x, min_y, max_x, max_y):
 
     # Constraints bounds on States:
     
-    mpc.bounds['upper','_x', 'x'] = 120 #100 map size
-    mpc.bounds['lower','_x', 'x'] = -120
-    mpc.bounds['upper','_x', 'y'] = 120
-    mpc.bounds['lower','_x', 'y'] = -120
+    mpc.bounds['upper','_x', 'x'] = 120#max_x #100 map size
+    mpc.bounds['lower','_x', 'x'] = 0#min_x
+    mpc.bounds['upper','_x', 'y'] = 120#max_y
+    mpc.bounds['lower','_x', 'y'] = 0#min_y
     
     
     mpc.bounds['upper','_x', 'theta'] = math.pi
     mpc.bounds['lower','_x', 'theta'] = -math.pi
     
     # Constraints bounds on inputs: (20cm/s)
-    mpc.bounds['upper','_u', 'u_r'] = 10
-    mpc.bounds['lower','_u', 'u_r'] = -10
-    mpc.bounds['upper','_u', 'u_l'] = 10
-    mpc.bounds['lower','_u', 'u_l'] = -10
+    mpc.bounds['upper','_u', 'u_r'] = 20
+    mpc.bounds['lower','_u', 'u_r'] = -20
+    mpc.bounds['upper','_u', 'u_l'] = 20
+    mpc.bounds['lower','_u', 'u_l'] = -20
     
 
     # Setup the MPC instance

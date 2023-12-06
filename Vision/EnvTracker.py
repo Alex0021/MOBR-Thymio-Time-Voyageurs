@@ -78,7 +78,7 @@ class EnvTracker:
         self._dist_coefs = dist_coefs
 
         # Map creation
-        self.THRESHOLD = 100
+        self.THRESHOLD = 90
         self.PROJECTED_RES = (1000, 1000)
         self._roi_map = tuple()
         self._roi_points = []
