@@ -145,21 +145,7 @@ def neighborhood(s):
 
 
 
-
-# The set of visited nodes that no longer need to be expanded.
-global closedSet
-closedSet = []
-
-# For node n, cameFrom[n] is the node immediately preceding it on the cheapest path from start to n currently known.
-global cameFrom
-cameFrom = dict()
-
-global km # Km stands for "key modifier". It corrects the heuristic function when recomputing new optimal path
-km=0
-
-
-
-def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, movement_type="8N", max_val=120, ):
+def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, movement_type="8N", max_val=120):
     """
     D*Lite for 2D occupancy grid. Finds a path from start to goal and can efficiently handle obstacle changes.
     h is the heuristic function. h(n) estimates the cost to reach goal from node n.
@@ -181,13 +167,10 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             assert coord>=0 and coord<max_val, "start or end goal not contained in the map"
     
     # check if start and goal nodes correspond to free spaces
-    if occupancy_grid_actual[start[0], start[1]]:
-        #raise Exception('Start node is not traversable')
-        # Open set is empty but goal was never reached
-        print("WARNING :: Start node is not traversable")
-        return [], [], []
+    if occupancy_grid_initial[start[0], start[1]]:
+        raise Exception('Start node is not traversable')
 
-    if occupancy_grid_actual[goal[0], goal[1]]:
+    if occupancy_grid_initial[goal[0], goal[1]]:
         raise Exception('Goal node is not traversable')
     
     # get the possible movements corresponding to the selected connectivity
@@ -202,14 +185,26 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     # A* Algorithm implementation - feel free to change the structure / use another pseudo-code
     # --------------------------------------------------------------------------------------------
     
-    state=0 #0 is the initialization, 1 is the update
+    state=0 #1 is the initialization, 2 is the update
     closedSetIter=[] #show the visited nodes during the iteration
-
+    priority=[]
 
     if np.array_equal(occupancy_grid_actual,occupancy_grid_initial): #initialization
-        print("state = ",state)
+        state=1
         print("initialization")
         previous_start=start
+
+
+        # The set of visited nodes that no longer need to be expanded.
+        global closedSet
+        closedSet = []
+
+        # For node n, cameFrom[n] is the node immediately preceding it on the cheapest path from start to n currently known.
+        global cameFrom
+        cameFrom = dict()
+
+        global km # Km stands for "key modifier". It corrects the heuristic function when recomputing new optimal path
+        km=0
 
         # For node n, gScore[n] is the cost of the cheapest path from start to n knowing the initial states of the research.
         global gScore
@@ -234,14 +229,13 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
 
 
     if not np.array_equal(occupancy_grid_actual,occupancy_grid_initial):
-        state=1
+        if state==1:
+            print("Warning: initialization and update occured in the same run")
+        state=2
         
         #km=h(start,previous_start)
         previous_start=start
-
-        print("state = ",state)
         print("update")
-        print("gScore = ",gScore)
 
         modified_nodes=[]
         for i in range(len(coords)):    
@@ -250,33 +244,36 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 rhs[current]=np.inf
                 openSet[current] = Key(current,start)
                 modified_nodes.append(current)
+                priority.append(current)
 
 
         for (i,j) in modified_nodes:
             for dx, dy, deltacost in movements:
                 neighbor = (i+dx, j+dy)
                 # if the node is not in the map, skip
-                if (neighbor[0] >= occupancy_grid_actual.shape[0]) or (neighbor[1] >= occupancy_grid_actual.shape[1]) or (neighbor[0] < 0) or (neighbor[1] < 0):
+                if (neighbor[0] >= occupancy_grid_initial.shape[0]) or (neighbor[1] >= occupancy_grid_initial.shape[1]) or (neighbor[0] < 0) or (neighbor[1] < 0):
                         continue
                 # if the node is occupied, skip
-                if (occupancy_grid_actual[neighbor[0], neighbor[1]]): 
+                if (occupancy_grid_initial[neighbor[0], neighbor[1]]): 
                         continue
                 if neighbor not in openSet:
                     openSet[neighbor]=Key(neighbor,start)
 
 
-
+    print("state = ",state)
 
     # while there are still elements to investigate
     while openSet != {}:
         #the node in openSet having the lowest Key[] value (it replaces the f function of the A* algorithm)
         current=min(openSet,key=openSet.get)
+        if current in priority:
+            priority.remove(current)
 
         openSet.pop(current)
 
         if gScore[current] >= rhs[current]:
             gScore[current]=rhs[current]
-            if state==1:
+            if state==2:
                 closedSetIter.append(current)
             closedSet.append(current)
         else: #gScore[current] < rhs[current]:
@@ -295,7 +292,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
         
 
         #If the goal is reached, reconstruct and return the obtained path
-        if gScore[start]==rhs[start]<1000:# and current == new_start :
+        if gScore[start]==rhs[start]<1000 and priority==[]:# and current == new_start :
             neighborhood_g=[]
             neighborhood_rhs=[]
             for (i,j) in neighborhood(start):
