@@ -4,7 +4,7 @@ import numpy as np
 A_t_minus_1 = np.array([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]]) #identity matrix 
 Q_t = np.array([[6.128,-10.530625, -12.55625], [-10.530625, 48.62571429, 37.6], [-12.55625, 37.6, 56]]) #determined with the covariance matrix according x,y and gamma
 H_t = np.array([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]])
-R_t = np.array([[0.0001, 0, 0], [0, 0.0001, 0], [0, 0, 0.0001]])
+R_t = np.array([[0.0001, 0, 0], [0, 0.0001, 0], [0, 0, 0.0001]]) #Sensor menasurement (camera) noise covariance matrix 
 sensor_noise = np.array([3, 9.15, 10]) #determined with the difference between the biggest and the smallest values of the tests in x,y and gamma
 
 def calculate_control_matrix(gamma, delta_t):
