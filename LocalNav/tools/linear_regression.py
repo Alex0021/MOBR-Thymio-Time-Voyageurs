@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
+# Perform a linear regression with given detected obstacles
 def linear_regression(data):
     # Separate x and y
     X = data[:, 0].reshape(-1, 1)

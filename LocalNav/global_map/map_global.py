@@ -1,21 +1,7 @@
 import numpy as np
 import math
 
-def create_map_global():
-    # Create a xy map with all zeros
-    map_size_x = 100
-    map_size_y = 100
-    map_global = np.zeros((map_size_x, map_size_y))
-
-    # Set the edges to 1
-    map_global[0, :] = 1  # Top edge
-    map_global[-1, :] = 1  # Bottom edge
-    map_global[:, 0] = 1  # Left edge
-    map_global[:, -1] = 1  # Right edge
-    
-    return map_global
-
-
+# Draw lines between 2 points or more
 def draw_line(map_array, x0, y0, x1, y1):
     dx = abs(x1 - x0)
     dy = abs(y1 - y0)
@@ -32,16 +18,16 @@ def draw_line(map_array, x0, y0, x1, y1):
         if e2 < dx:
             err += dx
             y0 += sy
-
-            
-
+         
+# Given actual absolute position of robot, current global map and local obstacles, update map to add local obstacles into global map
 def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obst_X, back_obst_y):
     # Init
     rounded_x_indices = []
     rounded_y_indices = []
     updated_mask = []
-    
-    # Set all values from absolute position
+    # FRONT
+    # If mask is true, draw a point or line within obst_X, obst_y
+    # Add obstacles if point
     for i in range(len(front_obst_X)):
         if not (math.isnan(front_obst_X[i]) or math.isnan(front_obst_y[i])):
             rounded_x_indices.append(int(round(front_obst_X[i], 1)))
@@ -49,22 +35,23 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
             updated_mask.append(mask[i])
             map_global[int(round(front_obst_y[i], 1)), int(round(front_obst_X[i], 1))] = 1
             
-            
+    # Add obstacles if lines
     for i in range(len(rounded_x_indices) - 1):
         x0, y0 = rounded_x_indices[i], rounded_y_indices[i]
         x1, y1 = rounded_x_indices[i + 1], rounded_y_indices[i + 1]
         
         # If mask is true, draw a line within front_obst_X, front_obst_y
         if updated_mask[i]:
-            draw_line(map_global, x0, y0, x1, y1)
-            
+            draw_line(map_global, x0, y0, x1, y1)       
             
     # Reset indices for back points
     rounded_x_indices = []
     rounded_y_indices = []
     updated_mask = []
 
-    # If mask_back is true, draw a line within back_obst_X, back_obst_y
+    # BACK
+    # If mask_back is true, draw a point or line within back_obst_X, back_obst_y
+    # Add obstacles if point
     for i in range(len(back_obst_X)):
         if not (math.isnan(back_obst_X[i]) or math.isnan(back_obst_y[i])):
             rounded_x_indices.append(int(round(back_obst_X[i], 1)))
@@ -72,14 +59,14 @@ def update_map(mask, mask_back, map_global, front_obst_X, front_obst_y, back_obs
             updated_mask.append(mask_back[i])
             map_global[int(round(back_obst_y[i], 1)), int(round(back_obst_X[i], 1))] = 1
 
+    # Add obstacles if lines
     for i in range(len(rounded_x_indices) - 1):
         x0, y0 = rounded_x_indices[i], rounded_y_indices[i]
         x1, y1 = rounded_x_indices[i + 1], rounded_y_indices[i + 1]
 
         if updated_mask[i]:
             draw_line(map_global, x0, y0, x1, y1)
-
-                
+          
     return map_global
     
  
