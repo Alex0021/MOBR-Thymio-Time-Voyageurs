@@ -114,7 +114,7 @@ def convolution_map(grid):
     :return: A convoluted map which has its obstacles made larger
     """
     #Create the mask, its approximatively the circle in which the thymio can lie without tuching the border
-    r=13
+    r=15
     mask=np.ones((r,r))
     mask[0,0]=0
     mask[0,1]=0
@@ -269,7 +269,6 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
         
         km=h(start,previous_start)
         previous_start=start
-        gScore[start]=np.inf
         print("update")
 
         
@@ -300,8 +299,8 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     while openSet != {}:
         #the node in openSet having the lowest Key[] value (it replaces the f function of the A* algorithm)
         current=min(openSet,key=openSet.get)
-        #if current in modified_nodes:
-        #    modified_nodes.remove(current)
+        if current in modified_nodes:
+            modified_nodes.remove(current)
 
         openSet.pop(current)
 
@@ -324,7 +323,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
         
 
         #If the goal is reached, reconstruct and return the obtained path
-        if gScore[start]==rhs[start]<1000:
+        if gScore[start]==rhs[start]<1000 and modified_nodes==[]:
             neighborhood_g=[]
             neighborhood_rhs=[]
             for (i,j) in neighborhood(start):
@@ -333,7 +332,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             if neighborhood_g==neighborhood_rhs:
                 del neighborhood_g,neighborhood_rhs
                 print("path found !")
-                return reconstruct_path(cameFrom, start,goal), closedSet
+                return reconstruct_path(cameFrom, start), closedSet
             
 
         
@@ -415,7 +414,7 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
     ax_astar = create_empty_plot(max_val, ax_astar)
 
     # Plot the best path found and the list of visited nodes
-    #ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
+    ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
     ax_astar.imshow(global_map.transpose(), cmap=cmap)
     ax_astar.plot(path[0], path[1], marker="o", color = 'blue');
     ax_astar.scatter(start[0], start[1], marker="o", color = 'green', s=200);

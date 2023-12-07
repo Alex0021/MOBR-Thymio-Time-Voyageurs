@@ -78,7 +78,7 @@ class EnvTracker:
         self._dist_coefs = dist_coefs
 
         # Map creation
-        self.THRESHOLD = 90
+        self.THRESHOLD = 100
         self.WHITE_BORDER_THICKNESS = 10
         self._roi_map = tuple()
         self._roi_points = []
@@ -93,7 +93,7 @@ class EnvTracker:
         self._goal_detected = False
         self._goal_pose = np.ones(2)*-1
         self._gridmap = np.zeros((10,10)) # Arbitrary size
-        self.THYMIO_Y_ADJS = 0.95
+        self.THYMIO_Y_ADJS = 0.96
 
         # Thymio tracking data
         self._thymio_pose_hist = np.zeros((4,3))
@@ -373,7 +373,7 @@ class EnvTracker:
                     cv2.fillPoly(mask, corners.astype(int), color)
                 else:
                     cv2.fillPoly(img, corners.astype(int), color)
-            mask = cv2.dilate(mask, np.ones((30,30)), iterations=2)
+            mask = cv2.dilate(mask, np.ones((35,35)), iterations=2)
             cv2.bitwise_or(img, mask, img)
             axes[0,1].imshow(img, cmap='gray')
             # Apply Sobel filter to extract edges

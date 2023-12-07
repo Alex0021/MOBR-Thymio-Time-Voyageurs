@@ -60,7 +60,7 @@ class CamCalib():
         
         cv2.destroyAllWindows()
 
-    def calibrate(self, square_size, file_dir='Vision/images/cal'):
+    def calibrate(self, square_size, file_dir='Vision/images/cal', save_params=True):
         i = 0
         file_list = glob.glob(f'{file_dir}/{self.output_file_name}*.jpg')
         objp = np.zeros((self._grid_size[0]*self._grid_size[1],3), np.float32)
@@ -88,8 +88,9 @@ class CamCalib():
         df = df.style.set_caption('Distortion params')
         display(df)
         # Save camera settings
-        np.savez('data/calib_params', cam_mat, dist_mat, rvecs, tvecs)
-        print("Calibration settings saved in ", 'files/calib_params')
+        if save_params:
+            np.savez('data/calib_params', cam_mat, dist_mat, rvecs, tvecs)
+            print("Calibration settings saved in ", 'files/calib_params')
 
     def undistord(self, frame: cv2.Mat, cam_mat, dist_coefs):
         w,h = frame.shape[0:2][::-1]
