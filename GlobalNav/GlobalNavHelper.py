@@ -165,7 +165,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     for point in [start, goal]:
         for coord in point:
             assert coord>=0 and coord<max_val, "start or end goal not contained in the map"
-
+    
     # check if start node correspond to free spaces and if not, find a valid node in it's neighborhood
     if occupancy_grid_actual[start[0], start[1]]:
         print('Start node is not traversable, taking the available node closest to start node')
@@ -198,10 +198,12 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 break
     
     print("going with this start: ",start)
+
     
-    # check if start and goal nodes correspond to free spaces
     if occupancy_grid_actual[start[0], start[1]]:
-        raise Exception('Start node is not traversable')
+        raise Exception('Even with recalculation, start node is not traversable')
+
+    
 
     if occupancy_grid_actual[goal[0], goal[1]]:
         raise Exception('Goal node is not traversable')
@@ -219,18 +221,17 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     # --------------------------------------------------------------------------------------------
     
     state=0 #1 is the initialization, 2 is the update
-    closedSetIter=[] #show the visited nodes during the iteration
-    priority=[]
+
+    global closedSet
+    closedSet=[]
+
+    modified_nodes=[] #modified nodes compared to the previous update
 
     if np.array_equal(occupancy_grid_actual,occupancy_grid_initial): #initialization
         state=1
         print("initialization")
+        global previous_start
         previous_start=start
-
-
-        # The set of visited nodes that no longer need to be expanded.
-        global closedSet
-        closedSet = []
 
         # For node n, cameFrom[n] is the node immediately preceding it on the cheapest path from start to n currently known.
         global cameFrom
@@ -266,18 +267,18 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             print("Warning: initialization and update occured in the same run")
         state=2
         
-        #km=h(start,previous_start)
+        km=h(start,previous_start)
         previous_start=start
+        gScore[start]=np.inf
         print("update")
 
-        modified_nodes=[]
+        
         for i in range(len(coords)):    
             if (occupancy_grid_actual[coords[i]]-occupancy_grid_initial[coords[i]]):
                 current=coords[i]
                 rhs[current]=np.inf
                 openSet[current] = Key(current,start)
                 modified_nodes.append(current)
-                priority.append(current)
 
 
         for (i,j) in modified_nodes:
@@ -299,15 +300,13 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     while openSet != {}:
         #the node in openSet having the lowest Key[] value (it replaces the f function of the A* algorithm)
         current=min(openSet,key=openSet.get)
-        if current in priority:
-            priority.remove(current)
+        #if current in modified_nodes:
+        #    modified_nodes.remove(current)
 
         openSet.pop(current)
 
         if gScore[current] >= rhs[current]:
             gScore[current]=rhs[current]
-            if state==2:
-                closedSetIter.append(current)
             closedSet.append(current)
         else: #gScore[current] < rhs[current]:
             gScore[current]=np.inf
@@ -320,13 +319,12 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 # if the node is occupied or has already been visited, skip
                 if (occupancy_grid_initial[neighbor[0], neighbor[1]]): #or (gScore[neighbor] == rhs[neighbor]<1000.0): 
                     continue
-                if neighbor in cameFrom:
-                    if cameFrom[neighbor]==current:
-                        rhs[neighbor] = np.inf
+                if cameFrom[neighbor]==current and neighbor not in current:
+                    rhs[neighbor] = np.inf
         
 
         #If the goal is reached, reconstruct and return the obtained path
-        if gScore[start]==rhs[start]<1000 and priority==[]:# and current == new_start :
+        if gScore[start]==rhs[start]<1000:
             neighborhood_g=[]
             neighborhood_rhs=[]
             for (i,j) in neighborhood(start):
@@ -335,7 +333,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             if neighborhood_g==neighborhood_rhs:
                 del neighborhood_g,neighborhood_rhs
                 print("path found !")
-                return reconstruct_path(cameFrom, start), closedSet, closedSetIter
+                return reconstruct_path(cameFrom, start,goal), closedSet
             
 
         
@@ -367,7 +365,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
 
     # Open set is empty but goal was never reached
     print("No path found to goal")
-    return [], closedSet, closedSetIter
+    return [], closedSet
 
 
 def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
@@ -407,19 +405,17 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
 
 
     # Run the D* algorithm
-    path, visitedNodes, visitedNodesIter = D_Star_lite(start, goal, coords, occupancy_grid_conv,previous_grid_conv, movement_type="8N",max_val=max_val)
+    path, visitedNodes = D_Star_lite(start, goal, coords, occupancy_grid_conv,previous_grid_conv, movement_type="8N",max_val=max_val)
     if len(path) == 0:
         return []
     path = np.array(path).reshape(-1, 2).transpose()
     visitedNodes = np.array(visitedNodes).reshape(-1, 2).transpose()
-    visitedNodesIter = np.array(visitedNodesIter).reshape(-1, 2).transpose()
 
     # Displaying the map
     ax_astar = create_empty_plot(max_val, ax_astar)
 
     # Plot the best path found and the list of visited nodes
     #ax_astar.scatter(visitedNodes[0], visitedNodes[1], marker="o", color = 'orange');
-    ax_astar.scatter(visitedNodesIter[0], visitedNodesIter[1], marker="o", color = 'green');
     ax_astar.imshow(global_map.transpose(), cmap=cmap)
     ax_astar.plot(path[0], path[1], marker="o", color = 'blue');
     ax_astar.scatter(start[0], start[1], marker="o", color = 'green', s=200);
