@@ -79,7 +79,7 @@ class EnvTracker:
 
         # Map creation
         self.THRESHOLD = 90
-        self.PROJECTED_RES = (1000, 1000)
+        self.WHITE_BORDER_THICKNESS = 10
         self._roi_map = tuple()
         self._roi_points = []
         self._world_to_pixels = []
@@ -96,7 +96,7 @@ class EnvTracker:
         self.THYMIO_Y_ADJS = 0.95
 
         # Thymio tracking data
-        self._thymio_pose_hist = np.zeros((10,3))
+        self._thymio_pose_hist = np.zeros((4,3))
         self._thymio_vel = np.zeros(3)
         self._last_time = 0
         self._update_count = 0
@@ -349,19 +349,23 @@ class EnvTracker:
             if bl_marker > 0:
                 cv2.rotate(img_project, bl_marker-1, img_project)
             # Create figure to show progress
-            fig = plt.figure(figsize=(20,12))
+            fig = plt.figure(figsize=(20,10))
             fig.suptitle('Map extraction process')
-            axes = fig.subplots(2,2)
+            axes = fig.subplots(2,3)
             axes[0,0].axis('off')
             axes[0,0].set_title('1- Map delimitation')
             axes[0,0].imshow(img_map[:,:,::-1])
             axes[0,1].axis('off')
             axes[0,1].set_title('2- Retrieve projection')
-            #axes[0,1].imshow(img_goal[:,:,::-1])
 
             # Hide all markers before obstacles detection
             img_no_marker = cv2.copyTo(img_project, None)
             img = cv2.cvtColor(img_no_marker, cv2.COLOR_BGR2GRAY)
+            # Draw white contour for map delimitation
+            img[:self.WHITE_BORDER_THICKNESS,:] = 255
+            img[-self.WHITE_BORDER_THICKNESS:,:] = 255
+            img[:,:self.WHITE_BORDER_THICKNESS] = 255
+            img[:,-self.WHITE_BORDER_THICKNESS:] = 255
             color = cv2.mean(img)[0:3]
             mask = np.zeros_like(img)
             for k,corners in self._detected_markers.items():
@@ -378,9 +382,16 @@ class EnvTracker:
             soby = cv2.Sobel(img_filtered, cv2.CV_64F, 0, 1, 3)
             sob = np.sqrt(sobx**2 + soby**2)
             sob = (sob * 255 / sob.max()).astype(np.uint8)
+            # Show sobel image
+            axes[0,2].axis('off')
+            axes[0,2].set_title('3- Sobel edges detection')
+            axes[0,2].imshow(sob, cmap='gray')
             # Apply threshold
             cv2.threshold(sob, self.THRESHOLD, 255, cv2.THRESH_BINARY, sob)
-            #sob = cv2.adaptiveThreshold(sob, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+            # Show threshold image
+            axes[1,0].axis('off')
+            axes[1,0].set_title('4- Thresholding')
+            axes[1,0].imshow(sob, cmap='gray')
             #-----------------------------------
             # FROM CHATGPT ASKING ABOUT CONTOURS HIERARCHY
             #-----------------------------------
@@ -398,19 +409,19 @@ class EnvTracker:
 
                 if has_parent and not has_child:
                     filtered_contours.append(contour)
-                # Create an empty image to draw the filtered contours
-                filtered_image = np.zeros_like(sob)
+            # Create an empty image to draw the filtered contours
+            filtered_image = np.zeros_like(sob)
 
             # Draw the filtered contours on the empty image
-            cv2.drawContours(filtered_image, filtered_contours, -1, 255, thickness=cv2.FILLED)
+            filtered_image = cv2.drawContours(filtered_image, filtered_contours, -1, 255, thickness=cv2.FILLED)
+
+            axes[1,1].axis('off')
+            axes[1,1].set_title('5- Fill closed shapes')
+            axes[1,1].imshow(filtered_image, cmap='gray')
 
             #------------------------
             # END OF CHATGPT RESCUE
             #-----------------------
-
-            axes[1,0].axis('off')
-            axes[1,0].set_title('3- Apply Sobel + Threshold')
-            axes[1,0].imshow(filtered_image, cmap='gray')
 
             # Find grid shape in pixel space                        
             grid_w, grid_h = w/(self._res*self._map_size[0]), h/(self._res*self._map_size[1])
@@ -421,22 +432,14 @@ class EnvTracker:
                     c_y = math.floor((len(self._gridmap[0])-1-j)*grid_h) + grid_h/2
                     im_rect = cv2.getRectSubPix(filtered_image, ((int) (round(grid_w, 0)),(int) (round(grid_h,0))), (c_x,c_y))
                     self._gridmap[i,j] = 1 if cv2.sumElems(im_rect)[0] > cv2.mean(im_rect)[0] else 0
-            self._configure_ax(axes[1,1], self._gridmap.shape[0], self._gridmap.shape[1], self._res)
+            self._configure_ax(axes[1,2], self._gridmap.shape[0], self._gridmap.shape[1], self._res)
             # Add the goal if detected
             cmap = colors.ListedColormap(['white', 'red'])
             if self._goal_detected:
                 self._goal_pose, img_goal = self.goalPose(img_project)
                 print("Goal detected @: ", self._goal_pose)
-                #goal_pose_grid = self._map_to_grid(self._goal_pose)
-                #goal_mask = (2*self._res, 2*self._res)
-                #begin_x = max(goal_pose_grid[0] - goal_mask[0], 0)
-                #end_x = min(goal_pose_grid[0] + goal_mask[0], self._gridmap.shape[0])
-                #begin_y = max(goal_pose_grid[1] - goal_mask[1], 0)
-                #end_y = min(goal_pose_grid[1] + goal_mask[1], self._gridmap.shape[1])
-                #self._gridmap[begin_x:end_x, begin_y:end_y] = 1
-                #cmap = colors.ListedColormap(['red', 'white', 'green'])
-            axes[1,1].imshow(self._gridmap.transpose(), cmap=cmap, origin='lower')
-            axes[1,1].set_title('4- Extracted Grid Map')
+            axes[1,2].imshow(self._gridmap.transpose(), cmap=cmap, origin='lower')
+            axes[1,2].set_title('6- Extracted Grid Map')
 
         return self._gridmap, self._goal_pose, thymio_pose
     
@@ -517,7 +520,10 @@ class EnvTracker:
             return False, np.zeros((3)), np.zeros((3)), img_thymio
         success, thymio_pose, thymio_angle, img_thymio = self.thymioPose(img_thymio)
         self._thymio_pose_hist = np.roll(self._thymio_pose_hist, -1, 0)
-        self._thymio_pose_hist[-1, :] = np.concatenate([thymio_pose, [thymio_angle]])
+        if success:
+            self._thymio_pose_hist[-1, :] = np.concatenate([thymio_pose, [thymio_angle]])
+        else:
+            self._thymio_pose_hist[-1, :] = self._thymio_pose_hist[-2, :]
         if self._last_time == 0:
             self._last_time = time.time_ns()
         if self._update_count >= self._thymio_pose_hist.shape[0]:
@@ -526,7 +532,7 @@ class EnvTracker:
             diff = (time.time_ns() - self._last_time) / 1E9
             self._last_time = time.time_ns()
             self._thymio_vel = np.zeros(3)
-            if diff <= 1:
+            if diff <= 5:
                 self._thymio_vel = (np.mean(self._thymio_pose_hist[-2:], 0) - np.mean(self._thymio_pose_hist[:2], 0)) / diff
         self._update_count += 1
         return True, self._thymio_pose_hist[-1], self._thymio_vel, img_thymio

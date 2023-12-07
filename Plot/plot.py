@@ -20,6 +20,12 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, min_x
     theta = abs_pos[0][2] - math.pi/2
     rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
                                [np.sin(theta), np.cos(theta)]])
+    
+    if best_path is not None:
+        ax.scatter(best_path[0], best_path[1], marker='o', color='blue')
+
+    if next_target is not None:
+        ax.scatter(next_target[0], next_target[1], marker='x', color='orange', s=150, linewidth = 3)
     # Thymio
     thymio_coords_rotated = np.dot(rotation_matrix, thymio_coords.T)
     thymio_coords_rotated = thymio_coords_rotated.T
@@ -31,13 +37,9 @@ def plot(abs_pos, thymio_coords, goal_position, map_global, closest_angle, min_x
     x, y, angle = abs_pos[0][:]
     dx = math.cos(closest_angle)#angle_radians
     dy = math.sin(closest_angle)#closest_angle
-    ax.quiver(x, y, dx, dy, angles='xy', scale_units='xy', scale=0.1, color='r', width=0.01)
+    ax.quiver(x, y, dx, dy, angles='xy', scale_units='xy', scale=0.08, color='r', width=0.01)
 
-    if best_path is not None:
-        ax.plot(best_path[0], best_path[1], marker='o', color='blue')
 
-    if next_target is not None:
-        ax.plot(next_target[0], next_target[1], marker='x', color='orange', markersize=20)
 
     # Coordinates of the rectangle's corners
     x_coordinates = [min_x, max_x, max_x, min_x, min_x]
