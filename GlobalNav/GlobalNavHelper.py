@@ -165,12 +165,45 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     for point in [start, goal]:
         for coord in point:
             assert coord>=0 and coord<max_val, "start or end goal not contained in the map"
+
+    # check if start node correspond to free spaces and if not, find a valid node in it's neighborhood
+    if occupancy_grid_actual[start[0], start[1]]:
+        print('Start node is not traversable, taking the available node closest to start node')
+        for i in neighborhood(start):
+            if not occupancy_grid_actual[i]:
+                start=i
+
+    if occupancy_grid_actual[start[0], start[1]]:
+        print('Start node still not traversable, expanding calculation to neighborhood level 2')
+        for i in neighborhood(start):
+            for j in neighborhood(i):
+                if not occupancy_grid_actual[j]:
+                        start=j
+                        break
+            if not occupancy_grid_actual[start]:
+                break
+
+    
+    if occupancy_grid_actual[start[0], start[1]]:
+        print('Start node still not traversable, expanding calculation to neighborhood level 3')
+        for i in neighborhood(start):
+            for j in neighborhood(i):
+                for k in neighborhood(j):
+                    if not occupancy_grid_actual[k]:
+                        start=k
+                        break
+                if not occupancy_grid_actual[start]:
+                    break
+            if not occupancy_grid_actual[start]:
+                break
+    
+    print("going with this start: ",start)
     
     # check if start and goal nodes correspond to free spaces
-    if occupancy_grid_initial[start[0], start[1]]:
+    if occupancy_grid_actual[start[0], start[1]]:
         raise Exception('Start node is not traversable')
 
-    if occupancy_grid_initial[goal[0], goal[1]]:
+    if occupancy_grid_actual[goal[0], goal[1]]:
         raise Exception('Goal node is not traversable')
     
     # get the possible movements corresponding to the selected connectivity
