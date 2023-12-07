@@ -2,7 +2,6 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
-from scipy.ndimage import convolve
 from scipy.signal import convolve2d
 
 
@@ -11,7 +10,7 @@ def create_empty_plot(max_val, ax=None):
     Helper function to create a figure of the desired dimensions & grid
     
     :param max_val: dimension of the map along the x and y dimensions
-    :return: the fig and ax objects.
+    :return: the ax object.
     """
     if ax is None:
         fig, ax = plt.subplots(figsize=(7,7))
@@ -33,21 +32,6 @@ def create_empty_plot(max_val, ax=None):
     return ax
 
 
-
-
-def _get_movements_4n():
-    """
-    Get all possible 4-connectivity movements (up, down, left right).
-    :return: list of movements with cost [(dx, dy, movement_cost)]
-    """
-    return [(1, 0, 1.0),
-            (0, 1, 1.0),
-            (-1, 0, 1.0),
-            (0, -1, 1.0)]
-
-
-
-
 def _get_movements_8n():
     """
     Get all possible 8-connectivity movements. Equivalent to get_movements_in_radius(1)
@@ -65,25 +49,23 @@ def _get_movements_8n():
             (1, -1, s2)]
 
 
-
-
 def Key(current_node,start_node):
     """
     The key is used to prioritize nodes in the priority queue. It gives an idea on which is the next best node to explore
     :param current_node: current node (x,y)
-    :param start_node: starting node
-    :return: Key of the node. Based on the gScore, the rhs, the heuristic and the key modifier km
+    :param start_node: starting node (i,j)
+    :return: Key of the node. The key will help the algorithm know which is the best next node in the openSet to explore. 
+             It is based on the gScore, the rhs, the heuristic and the key modifier km
     """
     current_node=tuple(current_node)
     Key_s=((min(gScore[current_node], rhs[current_node])) + h(current_node,start_node) + km, min(gScore[current_node], rhs[current_node]))
-    Key_s=tuple(Key_s)
-    return Key_s
+    return tuple(Key_s)
 
 def h(current_node,start_node):
     """
     The heuristic functiton. Here it is the euclidean distance from the start_node to the current_node, ignoring obstacles
     :param current_node: current node (x,y)
-    :param start_node: starting node
+    :param start_node: starting node (i,j)
     :return: Euclidean distance between start node and current node
     """
     current_node = np.array(current_node)
@@ -92,44 +74,46 @@ def h(current_node,start_node):
     
 def reconstruct_path(cameFrom, current):
     """
-    Recurrently reconstructs the path from start node to the current node
+    Recurrently reconstructs the path from goal node to the current node
     :param cameFrom: map (dictionary) containing for each node n the node immediately 
-                     preceding it on the cheapest path from start to n 
+                     preceding it on the cheapest path from goal to n 
                      currently known.
     :param current: current node (x, y)
-    :return: list of nodes from start to current node
+    :return: list of nodes from goal to current node
     """
     total_path = [current]
     while current in cameFrom.keys():
-        # Add where the current node came from to the start of the list
+        # Add where the current node came from at the end of the list
         total_path.append(cameFrom[current]) 
         current=cameFrom[current]
     return total_path
 
 def convolution_map(grid):
     """
-    This function convolves the map of the environment with the circle in which lies the robot. 
+    This function convolves the map of the environment with the mask. The mask is the circle in which lies the robot. 
     This way, it prevent the robot from getting too close to the obstacles
     :param grid: This is the gridded map of the environment
     :return: A convoluted map which has its obstacles made larger
     """
     #Create the mask, its approximatively the circle in which the thymio can lie without tuching the border
-    r=15
-    mask=np.ones((r,r))
+    d=11  #The thymio lies in a circle of diameter
+    mask=np.ones((d,d))
     mask[0,0]=0
     mask[0,1]=0
     mask[1,0]=0
-    mask[0,r-1]=0
-    mask[1,r-1]=0
-    mask[0,r-2]=0
-    mask[r-1,0]=0
-    mask[r-1,1]=0
-    mask[r-2,0]=0
-    mask[r-1,r-1]=0
-    mask[r-2,r-1]=0
-    mask[r-1,r-2]=0
+    mask[0,d-1]=0
+    mask[1,d-1]=0
+    mask[0,d-2]=0
+    mask[d-1,0]=0
+    mask[d-1,1]=0
+    mask[d-2,0]=0
+    mask[d-1,d-1]=0
+    mask[d-2,d-1]=0
+    mask[d-1,d-2]=0
 
-    convolved_grid=convolve2d(grid, mask,mode='same') #make the convolution between the grid and the mask,
+    #make the convolution between the grid and the mask. 
+    #The "mode='same'" assures that the output grid of the convolution will have the same size as the input one 
+    convolved_grid=convolve2d(grid, mask,mode='same') 
     
     limit = 0
     convolved_grid[convolved_grid>limit] = 1
@@ -140,27 +124,28 @@ def convolution_map(grid):
 
 
 def neighborhood(s):
+    """
+    :param s: current node s=(x,y)
+    :return: an arraw containing all the nodes that are neighbor with the current node s
+    """
     return [((s[0]-1),(s[1]+1)),((s[0]),(s[1]+1)),((s[0]+1),(s[1]+1)),((s[0]-1),(s[1])),(s),((s[0]+1),(s[1])),((s[0]-1),(s[1]-1)),((s[0]),(s[1]-1)),((s[0]+1),(s[1]-1))]
 
 
 
 
-def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, movement_type="8N", max_val=120):
+def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initial, max_val=120):
     """
     D*Lite for 2D occupancy grid. Finds a path from start to goal and can efficiently handle obstacle changes.
     h is the heuristic function. h(n) estimates the cost to reach goal from node n.
     :param start: start node (x, y)
     :param goal: goal node (x, y)
     :param coords: set of all coordinates of the grid
-    :param occupancy_grid: the grid map
+    :param occupancy_grid_actual: the modified grid map
+    :param occupancy_grid_initial: the inittial grid map
     :param movement: select between 4-connectivity ('4N') and 8-connectivity ('8N', default)
     :return: a tuple that contains: (the resulting path in meters, the resulting path in data array indices)
     """
-    
-    # -----------------------------------------
-    # DO NOT EDIT THIS PORTION OF CODE
-    # -----------------------------------------
-    
+       
     # Check if the start and goal are within the boundaries of the map
     for point in [start, goal]:
         for coord in point:
@@ -173,8 +158,9 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             if not occupancy_grid_actual[i]:
                 start=i
 
+    # If the start node is still not valid, looks for a valid node a bit further
     if occupancy_grid_actual[start[0], start[1]]:
-        print('Start node still not traversable, expanding calculation to neighborhood level 2')
+        print('Start node still not traversable, expanding calculation to neighborhood (level 2)')
         for i in neighborhood(start):
             for j in neighborhood(i):
                 if not occupancy_grid_actual[j]:
@@ -183,9 +169,9 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             if not occupancy_grid_actual[start]:
                 break
 
-    
+    # If the start node is still not valid, looks for a valid node further
     if occupancy_grid_actual[start[0], start[1]]:
-        print('Start node still not traversable, expanding calculation to neighborhood level 3')
+        print('Start node still not traversable, expanding calculation to neighborhood (level 3)')
         for i in neighborhood(start):
             for j in neighborhood(i):
                 for k in neighborhood(j):
@@ -196,41 +182,40 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                     break
             if not occupancy_grid_actual[start]:
                 break
-    
-    print("going with this start: ",start)
 
-    
+
     if occupancy_grid_actual[start[0], start[1]]:
         raise Exception('Even with recalculation, start node is not traversable')
-
+    else:
+        print("Valid start node: ",start)
     
 
     if occupancy_grid_actual[goal[0], goal[1]]:
         raise Exception('Goal node is not traversable')
     
-    # get the possible movements corresponding to the selected connectivity
-    if movement_type == '4N':
-        movements = _get_movements_4n()
-    elif movement_type == '8N':
-        movements = _get_movements_8n()
-    else:
-        raise ValueError('Unknown movement')
+    # get the possible movements corresponding to the connectivity
+    movements = _get_movements_8n()
     
     # --------------------------------------------------------------------------------------------
-    # A* Algorithm implementation - feel free to change the structure / use another pseudo-code
+    # D*Lite Algorithm implementation
     # --------------------------------------------------------------------------------------------
     
+
+    # The state tells if the algoritm is in the initialization phase or the update one
     state=0 #1 is the initialization, 2 is the update
 
-    global closedSet
+    # The list of all nodes that have been visited during the search of the optimal path
     closedSet=[]
 
-    modified_nodes=[] #modified nodes compared to the previous update
+    #The modified nodes compared to the previous update
+    modified_nodes=[] 
     priority=[]
 
-    if np.array_equal(occupancy_grid_actual,occupancy_grid_initial): #initialization
+    if np.array_equal(occupancy_grid_actual,occupancy_grid_initial): # Initialization phase
         state=1
-        print("initialization")
+        print("Initialization phase")
+
+        # Knowing the previous start will help us compute the "key modifier" km in the update phase
         global previous_start
         previous_start=start
 
@@ -238,15 +223,16 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
         global cameFrom
         cameFrom = dict()
 
-        global km # Km stands for "key modifier". It corrects the heuristic function when recomputing new optimal path
+        # Km stands for "key modifier". It corrects the heuristic function when updating the optimal path
+        global km 
         km=0
 
-        # For node n, gScore[n] is the cost of the cheapest path from start to n knowing the initial states of the research.
+        # For node n, gScore[n] is the cost of the cheapest path from goal to n knowing the initial states of the research.
         global gScore
         gScore = dict(zip(coords, [np.inf for x in range(len(coords))]))
         gScore[goal] = 0
 
-        # Right hand side. Rhs[n] is the theoretical cheapest path from start to n given the current state of the search and the environment changes
+        # Right hand side. Rhs[n] is the theoretical cheapest path from goal to n given the current state of the search and the environment changes
         global rhs
         rhs = dict(zip(coords, [np.inf for x in range(len(coords))]))
         rhs[goal] = 0
@@ -258,21 +244,23 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
         global openSet
         openSet = dict(zip([(goal)],Key(goal,start)))
 
-        # The D*Lite algorithm starts it research from the goal back to the start
+        # The D*Lite algorithm starts its research from the goal back to the start
         #This is because the goal stays the same whereas the start node changes each time the robot moves. 
         current=goal
 
 
-    if not np.array_equal(occupancy_grid_actual,occupancy_grid_initial):
+    if not np.array_equal(occupancy_grid_actual,occupancy_grid_initial): # Update phase
+        
         if state==1:
-            print("Warning: initialization and update occured in the same run")
+            raise Exception("Warning: initialization and update occured in the same run")
+        
         state=2
+        print("Update phase")
         
         km=h(start,previous_start)
         previous_start=start
-        print("update")
-
         
+        # Update the rhs value of the modified nodes (The ones where a new obstacle has been detected)
         for i in range(len(coords)):    
             if (occupancy_grid_actual[coords[i]]-occupancy_grid_initial[coords[i]]):
                 current=coords[i]
@@ -280,10 +268,11 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 openSet[current] = Key(current,start)
                 modified_nodes.append(current)
 
-
+        # For every modified node, put their neighbors in the openSet
         for (i,j) in modified_nodes:
             if gScore[(i,j)]<np.inf:
                 priority.append((i,j))
+            # for every neighbor of the (i,j) node:
             for dx, dy, deltacost in movements:
                 neighbor = (i+dx, j+dy)
                 # if the node is not in the map, skip
@@ -296,40 +285,39 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                     openSet[neighbor]=Key(neighbor,start)
         
 
-
-    print("state = ",state)
-
     # while there are still elements to investigate
     while openSet != {}:
-        #the node in openSet having the lowest Key[] value (it replaces the f function of the A* algorithm)
+        #the node in openSet having the lowest Key[] value (it replaces the fScore value of the A* algorithm)
         current=min(openSet,key=openSet.get)
         if current in priority:
             priority.remove(current)
 
+        # Dequeue the current node
         openSet.pop(current)
 
+        # check local consistancy of current node
         if gScore[current] >= rhs[current]:
             gScore[current]=rhs[current]
             closedSet.append(current)
         else: #gScore[current] < rhs[current]:
             gScore[current]=np.inf
             openSet[current]=Key(current,start)
+            # for every neighbor of the current node:
             for dx, dy, deltacost in movements:
                 neighbor = (current[0]+dx, current[1]+dy)
                 # if the node is not in the map, skip
                 if (neighbor[0] >= occupancy_grid_actual.shape[0]) or (neighbor[1] >= occupancy_grid_actual.shape[1]) or (neighbor[0] < 0) or (neighbor[1] < 0):
                     continue
                 # if the node is occupied or has already been visited, skip
-                if (occupancy_grid_initial[neighbor[0], neighbor[1]]): #or (gScore[neighbor] == rhs[neighbor]<1000.0): 
+                if (occupancy_grid_initial[neighbor[0], neighbor[1]]): 
                     continue
+                # if the neighbor node comes from an underconsistent node, it must be re-evaluated
                 if neighbor in cameFrom:
                     if cameFrom[neighbor]==current:
                         rhs[neighbor] = np.inf
-                        #modified_nodes.append(neighbor)
-                        #openSet[neighbor]=Key(neighbor,start)
         
 
-        #If the goal is reached, reconstruct and return the obtained path
+        #If the start node is locally consistent and the modified nodes have been evaluated, reconstruct and return the obtained path
         if gScore[start]==rhs[start]<1000 and priority==[]:
             neighborhood_g=[]
             neighborhood_rhs=[]
@@ -340,8 +328,6 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 del neighborhood_g,neighborhood_rhs
                 print("path found !")
                 return reconstruct_path(cameFrom, start), closedSet
-            
-
         
 
         #for each neighbor of current, put them in openSet compute the rhs value of neighbor: this will help tell which node to chose next
@@ -351,11 +337,12 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
             if (neighbor[0] >= occupancy_grid_actual.shape[0]) or (neighbor[1] >= occupancy_grid_actual.shape[1]) or (neighbor[0] < 0) or (neighbor[1] < 0):
                 continue
             # if the node is occupied or has already been visited, skip
-            if (occupancy_grid_initial[neighbor[0], neighbor[1]]): #or (gScore[neighbor] == rhs[neighbor]<1000.0): 
+            if (occupancy_grid_initial[neighbor[0], neighbor[1]]): 
                 continue
             # d(current,neighbor) is the weight of the edge from current to neighbor
-            # tentative_gScore is the distance from start to the neighbor through current
+            # tentative_rhs is the distance from goal to the neighbor through current
             tentative_rhs = gScore[current] + deltacost
+            # if the neighbor comes from a node occuped by an obstacle, update its rhs value (make it locally inconsistent to go to the queue)
             if neighbor in cameFrom:
                 if occupancy_grid_actual[cameFrom[neighbor]]:
                     rhs[neighbor]=np.inf
@@ -365,6 +352,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 # This path to neighbor is better than any previous one. Record it!
                 cameFrom[neighbor] = current
                 rhs[neighbor] = tentative_rhs
+            # If the neighbor node is locally inconsistent, put it in the queue with its key
             if gScore[neighbor] != rhs[neighbor]:
                 openSet[neighbor]=Key(neighbor,start)
         
@@ -372,6 +360,8 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     # Open set is empty but goal was never reached
     print("No path found to goal")
     return [], closedSet
+
+
 
 
 def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
@@ -383,6 +373,7 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
     pos = np.reshape(pos, (x.shape[0]*x.shape[1], 2))
     coords = list([(int(x[0]), int(x[1])) for x in pos])
 
+    # Include the borders of the map
     for i in range(max_val):
         global_map[i,0] = 1
         global_map[i,max_val-1] = 1
@@ -411,7 +402,7 @@ def FindGlobalPath(start, goal, global_map, previous_map, ax_astar=None):
 
 
     # Run the D* algorithm
-    path, visitedNodes = D_Star_lite(start, goal, coords, occupancy_grid_conv,previous_grid_conv, movement_type="8N",max_val=max_val)
+    path, visitedNodes = D_Star_lite(start, goal, coords, occupancy_grid_conv,previous_grid_conv,max_val=max_val)
     if len(path) == 0:
         return []
     path = np.array(path).reshape(-1, 2).transpose()
