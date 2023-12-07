@@ -226,6 +226,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     closedSet=[]
 
     modified_nodes=[] #modified nodes compared to the previous update
+    priority=[]
 
     if np.array_equal(occupancy_grid_actual,occupancy_grid_initial): #initialization
         state=1
@@ -281,6 +282,8 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
 
 
         for (i,j) in modified_nodes:
+            if gScore[(i,j)]<np.inf:
+                priority.append((i,j))
             for dx, dy, deltacost in movements:
                 neighbor = (i+dx, j+dy)
                 # if the node is not in the map, skip
@@ -291,6 +294,7 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                         continue
                 if neighbor not in openSet:
                     openSet[neighbor]=Key(neighbor,start)
+        
 
 
     print("state = ",state)
@@ -299,8 +303,8 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
     while openSet != {}:
         #the node in openSet having the lowest Key[] value (it replaces the f function of the A* algorithm)
         current=min(openSet,key=openSet.get)
-        if current in modified_nodes:
-            modified_nodes.remove(current)
+        if current in priority:
+            priority.remove(current)
 
         openSet.pop(current)
 
@@ -318,12 +322,15 @@ def D_Star_lite(start, goal, coords, occupancy_grid_actual, occupancy_grid_initi
                 # if the node is occupied or has already been visited, skip
                 if (occupancy_grid_initial[neighbor[0], neighbor[1]]): #or (gScore[neighbor] == rhs[neighbor]<1000.0): 
                     continue
-                if cameFrom[neighbor]==current and neighbor not in current:
-                    rhs[neighbor] = np.inf
+                if neighbor in cameFrom:
+                    if cameFrom[neighbor]==current:
+                        rhs[neighbor] = np.inf
+                        #modified_nodes.append(neighbor)
+                        #openSet[neighbor]=Key(neighbor,start)
         
 
         #If the goal is reached, reconstruct and return the obtained path
-        if gScore[start]==rhs[start]<1000 and modified_nodes==[]:
+        if gScore[start]==rhs[start]<1000 and priority==[]:
             neighborhood_g=[]
             neighborhood_rhs=[]
             for (i,j) in neighborhood(start):
